@@ -21,7 +21,7 @@ A public, type-safe, CI-heavy Hello World app — fully loaded with modern tooli
 | Type Safety      | tRPC + Zod (defining Server Action logic & validation) |
 | Testing          | Playwright (E2E)                     |
 | CI/CD            | GitHub Actions                       |
-| Deploy           | GCP Kubernetes (GKE)                 |
+| Deploy           | Vercel                               |
 | Quality Gate     | SonarQube                            |
 | Design           | Responsive layout                    |
 | Database         | Neon Postgres (Vercel) + Drizzle ORM |
@@ -69,23 +69,24 @@ This combination allows us to build robust, type-safe server-side logic for our 
 
 ## 🚀 Deployment
 
-**This project deploys to GKE (Google Kubernetes Engine)** using Docker + `kubectl`.
+**This project deploys to Vercel.** Vercel handles the build and deployment process directly from the Git repository.
 
 - ✅ **Firebase Hosting is not used**
-- 🔐 Neon Postgres is used for persistent storage via Drizzle ORM
-- 💾 Redis (via Upstash) is used for per-user rate limiting
-- 💡 GCP Secret Manager or GitHub secrets are used for credentials
+- 🔐 Neon Postgres is used for persistent storage via Drizzle ORM (managed through Vercel environment variables).
+- 💾 Redis (via Upstash) is used for per-user rate limiting (managed through Vercel environment variables).
+- 💡 GitHub secrets are used for the Vercel CLI and other Actions configurations. Vercel has its own environment variable management for the deployed application.
 
-### Deployment Pipeline Overview:
-1. GitHub Actions builds + pushes Docker image to GCR
-2. CI uses `kubectl` to apply manifests to your GKE cluster
-3. Optional: Use Ingress + Cloud Armor for production traffic
-
-Example commands:
-```bash
-gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/hello-world
-kubectl apply -f k8s/deployment.yaml
-```
+### Deployment Pipeline Overview (with Vercel & GitHub Actions):
+1. Code is pushed to GitHub (main branch or a Pull Request).
+2. **Vercel**: Automatically triggers a build and deployment.
+    - For the `main` branch, it deploys to Production.
+    - For Pull Requests, it creates a unique Preview Deployment.
+3. **GitHub Actions (`ci.yml`):**
+    - `lint_unit_build` job: Runs linters, unit tests, and a production build check. This runs for all PRs and pushes to `main`.
+    - `e2e_tests` job: (Runs after `lint_unit_build` on PRs from same repo & pushes to `main`)
+        - Fetches the Vercel Preview URL (for PRs) or Production URL (for `main` branch).
+        - Runs Playwright End-to-End tests against the live Vercel deployment.
+        - Uploads test reports.
 
 ---
 
@@ -96,16 +97,15 @@ kubectl apply -f k8s/deployment.yaml
 - [x] Configure Neon Postgres (Vercel) + Drizzle ORM
 - [x] Set up Playwright (E2E)
 - [x] Integrate Upstash Redis (rate limiter utility)
-- [ ] GitHub Actions:
-  - [ ] Lint / Typecheck
-  - [ ] Unit + E2E Tests (Playwright)
-  - [ ] Preview builds for PRs
-  - [ ] Deploy to GKE
+- [x] GitHub Actions:
+  - [x] Lint / Typecheck / Build
+  - [x] Unit Tests
+  - [x] E2E Tests (Playwright against Vercel Previews/Production)
   - [ ] SonarQube scan + gate
-- [ ] Add Kubernetes manifests (`deployment.yaml`, `service.yaml`)
-- [ ] Store secrets in GitHub + test decode in CI
+- [ ] Store secrets in GitHub + test decode in CI (Vercel-related secrets added)
 - [ ] Build responsive layout
 - [ ] Document everything cleanly
+- [ ] **Future Considerations**: Dockerize output (for alternative deployments), k8 clusters (if non-Vercel targets are explored)
 
 ---
 
@@ -128,7 +128,7 @@ pnpm dev
 **Other commands:**
 ```bash
 pnpm build
-pnpm deploy:k8s   # (to be configured)
+# pnpm deploy:cloudrun # Placeholder for Cloud Run deployment script (to be configured)
 
 # Database
 pnpm db:generate  # Generate Drizzle migrations based on schema changes

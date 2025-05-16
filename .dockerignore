@@ -1,0 +1,37 @@
+# .dockerignore
+
+# Git files
+.git
+.gitignore
+
+# Node modules
+node_modules
+
+# Next.js build outputs (handled by multi-stage build)
+.next
+
+# Env files (should be passed at runtime, not built into image)
+.env*
+!.env.example # Allow .env.example if you want it for some reason, but usually not needed in image
+
+# PNPM files
+.pnpm-debug.log*
+pnpm-lock.yaml # Handled by specific COPY in Dockerfile
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Local development specific
+README.md
+
+# Test files (if not needed in production image)
+tests/
+tests-examples/
+playwright.config.ts
+playwright-report/
+test-results/
+
+# Drizzle migration files (usually applied externally, not run from app image)
+src/db/migrations/
+drizzle.config.ts 

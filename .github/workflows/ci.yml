@@ -61,21 +61,23 @@ jobs:
 
       - name: Configure Docker for Artifact Registry
         run: |
-          gcloud auth configure-docker ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev --quiet
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
       - name: Build and Push Docker image
         env:
-          REGISTRY: ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/helloworld-docker-repo
+          REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/helloworld-docker-repo
           IMAGE_NAME: nextjs-app
         run: |
-          docker build . -t $REGISTRY/$IMAGE_NAME:${{ github.sha }}
-          docker push $REGISTRY/$IMAGE_NAME:${{ github.sha }}
+          echo "Building image: $REGISTRY/$IMAGE_NAME:${{ github.sha }}"
+          docker build . -t "$REGISTRY/$IMAGE_NAME:${{ github.sha }}"
+          echo "Pushing image to: $REGISTRY/$IMAGE_NAME:${{ github.sha }}"
+          docker push "$REGISTRY/$IMAGE_NAME:${{ github.sha }}"
 
       - name: Deploy to Cloud Run
         id: deploy
         run: |
           gcloud run deploy ${{ secrets.CLOUD_RUN_SERVICE_NAME }} \
-            --image ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/helloworld-docker-repo/nextjs-app:${{ github.sha }} \
+            --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/helloworld-docker-repo/nextjs-app:${{ github.sha }} \
             --region ${{ secrets.CLOUD_RUN_REGION }} \
             --platform managed \
             --quiet \

@@ -1,23 +1,22 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
-import * as schema from '@/db/schema'; // Import your schema
+import { db } from '@/lib/db';
 
 // Ensure DATABASE_URL is available. For server-side, it should be directly accessible.
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL environment variable is not set for Drizzle client');
 }
 
-const sql = neon(process.env.DATABASE_URL!);
-const db = drizzle(sql, { schema });
-
 /**
  * Creates context.
  * In a Server Action, you might call this with custom arguments like an IP address.
  */
 export async function createContext(opts?: { ip?: string }) {
+  if (!db) {
+    throw new Error('Database is not initialized');
+  }
+  
   return {
     db,
-    ip: opts?.ip ?? '127.0.0.1', // Fallback IP, be mindful of this for rate limiting
+    ip: opts?.ip || 'unknown',
   };
 }
 

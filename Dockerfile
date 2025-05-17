@@ -15,17 +15,13 @@ RUN pnpm install --frozen-lockfile --prod=false
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy pnpm and its global installation from the deps stage
-COPY --from=deps /usr/local/bin/pnpm /usr/local/bin/
-COPY --from=deps /usr/local/lib/node_modules /usr/local/lib/node_modules
+# Reinstall pnpm in the builder stage to ensure it's correctly set up
+RUN npm install -g pnpm
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Environment variables needed for the Next.js build process
-# These are ARGs, so they must be passed during `docker build`
-# They will be baked into the build if your Next.js app uses them at build time
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN pnpm build
 
@@ -33,8 +29,8 @@ RUN pnpm build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -48,7 +44,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 
 EXPOSE 3000
-ENV PORT 3000
+ENV PORT=3000
 
 # server.js is created by Next.js in standalone output mode
 CMD ["node", "server.js"] 

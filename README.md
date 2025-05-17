@@ -149,13 +149,42 @@ After completing the above GCP setup, configure the following secrets in your Gi
 -   `GCP_WORKLOAD_IDENTITY_POOL_ID`: The ID you chose for your Workload Identity Pool (e.g., `helloworld-github-pool`).
 -   `GCP_WORKLOAD_IDENTITY_PROVIDER_ID`: The ID you chose for your Workload Identity Pool Provider (e.g., `github-provider`).
 -   `GCP_SERVICE_ACCOUNT_EMAIL`: The email of the GCP Service Account GitHub Actions will impersonate (e.g., `github-ci@tryout-ci.iam.gserviceaccount.com`).
--   `CLOUD_RUN_SERVICE_NAME`: Name for your Cloud Run service (e.g., `helloworld-app`).
--   `CLOUD_RUN_REGION`: GCP region for Cloud Run (e.g., `us-central1`).
+-   `CLOUD_RUN_SERVICE_NAME`: Name for your Cloud Run service (e.g., `helloworld-gcr`). This service will be created or updated by the CI pipeline.
+-   `CLOUD_RUN_REGION`: GCP region for Cloud Run and Artifact Registry (e.g., `us-central1`). Ensure this is consistent.
 -   `DATABASE_URL`: Connection string for your Neon database.
 -   `UPSTASH_REDIS_REST_URL`: URL for your Upstash Redis instance.
 -   `UPSTASH_REDIS_REST_TOKEN`: Token for your Upstash Redis instance.
 
 This setup enables the GitHub Actions workflow (`.github/workflows/ci.yml`) to authenticate to GCP using the `google-github-actions/auth` action.
+
+### 4. Create Artifact Registry Repository
+The CI/CD pipeline will push Docker images to Google Artifact Registry. Create a repository for this.
+Replace `YOUR_ARTIFACT_REPO_NAME` (this should match your `CLOUD_RUN_SERVICE_NAME` for consistency, e.g., `helloworld-gcr`), `YOUR_CLOUD_RUN_REGION`, and `YOUR_GCP_PROJECT_ID`.
+
+```bash
+gcloud artifacts repositories create YOUR_ARTIFACT_REPO_NAME \
+    --repository-format=docker \
+    --location=YOUR_CLOUD_RUN_REGION \
+    --project=YOUR_GCP_PROJECT_ID \
+    --description="Docker repository for YOUR_ARTIFACT_REPO_NAME"
+```
+*Example values used in this project: `helloworld-gcr` for repo name, `us-central1` for region, `tryout-ci` for project ID.*
+
+### 5. Create Cloud Run Service (Initial Placeholder)
+The CI/CD pipeline will deploy to and manage this Cloud Run service. You can create an initial placeholder service.
+Replace `YOUR_CLOUD_RUN_SERVICE_NAME` (e.g., `helloworld-gcr`), `YOUR_CLOUD_RUN_REGION`, and `YOUR_GCP_PROJECT_ID`.
+
+```bash
+gcloud run deploy YOUR_CLOUD_RUN_SERVICE_NAME \
+  --region YOUR_CLOUD_RUN_REGION \
+  --image gcr.io/cloudrun/placeholder \
+  --platform managed \
+  --allow-unauthenticated \
+  --project YOUR_GCP_PROJECT_ID
+```
+*Example values used in this project: `helloworld-gcr` for service name, `us-central1` for region, `tryout-ci` for project ID.*
+
+The CI pipeline (`.github/workflows/ci.yml`) will then take over, building your application's Docker image, pushing it to the Artifact Registry repository, and deploying new revisions to this Cloud Run service.
 
 ---
 

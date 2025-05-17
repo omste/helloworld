@@ -119,10 +119,10 @@ jobs:
             --platform managed \
             --quiet \
             --allow-unauthenticated \
-            --set-env-vars="NODE_ENV=production" \
+            --set-env-vars="NODE_ENV=production,GRAFANA_CLOUD_KEY=${{ secrets.GRAFANA_CLOUD_KEY }}" \
             --tag pr-${{ github.event.number }} \
             --format='get(status.url)')
-          echo "PREVIEW_URL=${PREVIEW_URL}" >> $GITHUB_ENV
+          echo "url=${PREVIEW_URL}" >> $GITHUB_OUTPUT
 
       - name: Set safe preview URL output
         id: url_output

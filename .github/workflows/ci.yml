@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  pull_request: # This will trigger for PRs to main from forks and local branches
+  pull_request:
     branches:
       - main
 
@@ -24,110 +24,90 @@ jobs:
         with:
           version: 'latest'
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm lint
       - name: Run Unit Tests
         run: pnpm test:unit
-      - name: Build
+      - name: Build Next.js app
         run: pnpm build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
-          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
 
-  e2e_tests:
-    name: E2E Tests (vs Vercel)
+  deploy_and_e2e_tests:
+    name: Deploy to Cloud Run & Run E2E Tests
     runs-on: ubuntu-latest
     needs: lint_unit_build
-    if: >
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Set up Node.js
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ secrets.GCP_WORKLOAD_IDENTITY_POOL_ID }}/providers/${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_ID }}'
+          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}'
+
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev
+
+      - name: Build and Push Docker image
+        env:
+          IMAGE_NAME: ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.CLOUD_RUN_SERVICE_NAME }}:${{ github.sha }}
+        run: |
+          docker build . -t $IMAGE_NAME
+          docker push $IMAGE_NAME
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        run: |
+          SERVICE_URL=$(gcloud run deploy ${{ secrets.CLOUD_RUN_SERVICE_NAME }} \
+            --image ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.CLOUD_RUN_SERVICE_NAME }}:${{ github.sha }} \
+            --region ${{ secrets.CLOUD_RUN_REGION }} \
+            --platform managed \
+            --quiet \
+            --allow-unauthenticated \
+            --set-env-vars="DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+            --set-env-vars="UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }}" \
+            --set-env-vars="UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" \
+            --set-env-vars="PORT=3000" \
+            --format='value(status.url)')
+          echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "Deployed to $SERVICE_URL"
+
+      - name: Set up Node.js for Playwright
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v3
+          node-version: '20.x'
+      - name: Set up pnpm for Playwright
+        uses: pnpm/action-setup@v4
         with:
-          version: 8
-          run_install: false
-
-      - name: Install Vercel CLI
-        run: sudo npm install -g vercel
-
-      - name: Link Vercel Project
-        run: vercel link --yes --token=${{ secrets.VERCEL_TOKEN }} --project=${{ secrets.VERCEL_PROJECT_ID }} --org=${{ secrets.VERCEL_ORG_ID }}
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Get Vercel Deployment URL
-        id: get_url
-        run: |
-          URL=""
-          COMMIT_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
-          echo "Looking for Vercel deployment for commit: $COMMIT_SHA on project ${{ secrets.VERCEL_PROJECT_NAME }}"
-          
-          for i in {1..15}; do
-            if [ "${{ github.event_name }}" == "pull_request" ]; then
-              DEPLOYMENT_ID=$(vercel ls ${{ secrets.VERCEL_PROJECT_NAME }} --token=${{ secrets.VERCEL_TOKEN }} --meta commitSha=${COMMIT_SHA} --state READY | tail -n 1 | awk '{print $1}')
-              if [ -n "$DEPLOYMENT_ID" ] && [ "$DEPLOYMENT_ID" != "Found" ] && [ "$DEPLOYMENT_ID" != "No" ]; then
-                 URL=$(vercel inspect $DEPLOYMENT_ID --token=${{ secrets.VERCEL_TOKEN }} | jq -r .url)
-                 if [ -n "$URL" ] && [ "$URL" != "null" ]; then
-                   echo "Preview URL found: $URL (Deployment ID: $DEPLOYMENT_ID)"
-                   break
-                 fi
-              fi
-            elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/main" ]; then
-              URL=$(vercel inspect --prod ${{ secrets.VERCEL_PROJECT_NAME }} --token=${{ secrets.VERCEL_TOKEN }} | jq -r .url)
-              if [ -n "$URL" ] && [ "$URL" != "null" ]; then
-                echo "Production URL found: $URL"
-                break
-              fi
-            fi
-            echo "Deployment URL not found yet for commit $COMMIT_SHA (attempt $i/15). Waiting 20 seconds..."
-            sleep 20
-          done
-
-          if [ -z "$URL" ] || [ "$URL" == "null" ]; then
-            echo "::error::Failed to retrieve Vercel deployment URL for commit $COMMIT_SHA on project ${{ secrets.VERCEL_PROJECT_NAME }} after multiple attempts."
-            exit 1
-          fi
-          echo "url=https://$URL" >> $GITHUB_OUTPUT
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_PROJECT_NAME: ${{ secrets.VERCEL_PROJECT_NAME }}
-
-      - name: Get pnpm store directory
+          version: 'latest'
+      - name: Get pnpm store directory (Playwright)
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
+      - name: Setup pnpm cache (Playwright)
         uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
-
-      - name: Install test dependencies
+      - name: Install Playwright dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Run Playwright tests
-        if: steps.get_url.outputs.url != ''
+        if: steps.deploy.outputs.SERVICE_URL != ''
         env:
-          PLAYWRIGHT_TARGET_URL: ${{ steps.get_url.outputs.url }}
+          PLAYWRIGHT_TARGET_URL: ${{ steps.deploy.outputs.SERVICE_URL }}
         run: pnpm test:e2e
 
       - name: Upload Playwright report

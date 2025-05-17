@@ -34,4 +34,16 @@ test-results/
 
 # Drizzle migration files (usually applied externally, not run from app image)
 src/db/migrations/
-drizzle.config.ts 
+drizzle.config.ts
+
+# PNPM cache and other local pnpm files
+.pnpm-store/
+
+# Test reports and cache
+.playwright-cache/
+
+# VSCode settings
+.vscode/
+
+# PNPM files
+npm-debug.log 

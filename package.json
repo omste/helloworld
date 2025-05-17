@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "next start",
+    "start": "OTEL_TRACES_EXPORTER=\"otlp\" OTEL_EXPORTER_OTLP_ENDPOINT=\"https://otlp-gateway-prod-gb-south-1.grafana.net/otlp\" OTEL_EXPORTER_OTLP_HEADERS=\"Authorization=Basic MTI2MDI5OTpnbGNfZXlKdklqb2lNVFF6TWpJMU9DSXNJbTRpT2lKemRHRmpheTB4TWpZd01qazVMVzkwWld3dGIyNWliMkZ5WkdsdVp5MW5jakVpTENKcklqb2lPWEJ4VWxwcE5VUnZPRFZNV0ROS09XSTVRemM0ZUhRMElpd2liU0k2ZXlKeUlqb2ljSEp2WkMxbllpMXpiM1YwYUMweEluMTk=\" OTEL_RESOURCE_ATTRIBUTES=\"service.name=helloworld-app,service.namespace=helloworld,deployment.environment=production\" OTEL_NODE_RESOURCE_DETECTORS=\"env,host,os\" NODE_OPTIONS=\"--require @opentelemetry/auto-instrumentations-node/register\" next start",
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.59.0",
     "@tanstack/react-query": "^5.76.1",
     "@trpc/client": "^11.1.2",
     "@trpc/next": "^11.1.2",

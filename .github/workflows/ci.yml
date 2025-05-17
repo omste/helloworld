@@ -111,7 +111,7 @@ jobs:
 
       - name: Prepare Grafana OTLP Header
         id: grafana_header
-        run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n '1260299:${{ secrets.GRAFANA_CLOUD_KEY }}' | base64)" >> $GITHUB_ENV
+        run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n '1260299:${{ secrets.GRAFANA_CLOUD_KEY }}' | base64 -w 0)" >> $GITHUB_ENV
 
       - name: Deploy to Cloud Run
         id: deploy

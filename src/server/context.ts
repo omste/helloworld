@@ -1,4 +1,3 @@
-import { type FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import * as schema from '@/db/schema'; // Import your schema

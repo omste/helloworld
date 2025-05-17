@@ -1,11 +1,8 @@
 name: CI/CD
 
-# Testing GCP deployment pipeline
+# Production deployment pipeline
 on:
   push:
-    branches:
-      - main
-  pull_request:
     branches:
       - main
 

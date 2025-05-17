@@ -110,9 +110,9 @@ jobs:
           build-args: |
             NEXT_TELEMETRY_DISABLED=1
 
-      - name: Prepare Grafana OTLP Header
-        id: grafana_header
-        run: echo "OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic $(echo -n '1260299:${{ secrets.GRAFANA_CLOUD_KEY }}' | base64 -w 0)" >> $GITHUB_ENV
+      - name: Prepare Grafana Authorization Header Value
+        id: grafana_auth_value_step
+        run: echo "GRAFANA_AUTH_HEADER_CONTENT=Authorization=Basic $(echo -n '1260299:${{ secrets.GRAFANA_CLOUD_KEY }}' | base64 -w 0)" >> $GITHUB_ENV
 
       - name: Deploy Preview to Cloud Run
         id: deploy
@@ -123,7 +123,7 @@ jobs:
             --platform managed \
             --quiet \
             --allow-unauthenticated \
-            --set-env-vars="NODE_ENV=production,OTEL_TRACES_EXPORTER=otlp,OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-gb-south-1.grafana.net/otlp,${{ env.OTEL_EXPORTER_OTLP_HEADERS }},OTEL_RESOURCE_ATTRIBUTES='service.name=${{ steps.preview_name.outputs.preview_name }},service.namespace=helloworld,deployment.environment=preview',OTEL_NODE_RESOURCE_DETECTORS='env,host,os',NODE_OPTIONS='--require @opentelemetry/auto-instrumentations-node/register'" \
+            --set-env-vars="NODE_ENV=production,OTEL_TRACES_EXPORTER=otlp,OTEL_EXPORTER_OTLP_ENDPOINT='https://otlp-gateway-prod-gb-south-1.grafana.net/otlp',OTEL_EXPORTER_OTLP_HEADERS='${{ env.GRAFANA_AUTH_HEADER_CONTENT }}',OTEL_RESOURCE_ATTRIBUTES='service.name=${{ steps.preview_name.outputs.preview_name }},service.namespace=helloworld,deployment.environment=preview',OTEL_NODE_RESOURCE_DETECTORS='env,host,os',NODE_OPTIONS='--require @opentelemetry/auto-instrumentations-node/register'" \
             --tag pr-${{ github.event.number }} \
             --format='get(status.url)')
           echo "PREVIEW_URL=${PREVIEW_URL}" >> $GITHUB_ENV

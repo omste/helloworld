@@ -220,6 +220,109 @@ pnpm test:e2e:report    # Show last Playwright HTML report
 
 ---
 
+## 🚨 Deployment Challenges & Solutions
+
+During the setup of our Google Cloud Run deployment pipeline, we encountered and solved several challenges. Here's a detailed breakdown of the issues and their solutions:
+
+### 1. GitHub Actions Authentication with GCP
+
+**Challenge:** Setting up secure authentication between GitHub Actions and Google Cloud Platform.
+
+**Solution:**
+- Implemented Workload Identity Federation instead of using service account keys
+- Created a dedicated service account with minimal permissions
+- Set up proper IAM bindings and attribute conditions
+- Used `token_format: 'access_token'` in the auth action for Docker authentication
+
+### 2. Docker Registry Configuration
+
+**Challenge:** Configuring proper access to Google Artifact Registry.
+
+**Solution:**
+- Used the correct registry format: `us-central1-docker.pkg.dev/$PROJECT_ID/helloworld-docker-repo`
+- Added proper authentication for Docker using `gcloud auth configure-docker`
+- Implemented build caching using GitHub Actions cache
+
+### 3. Cloud Run Deployment Issues
+
+**Challenge:** Several deployment-specific issues needed to be resolved:
+
+1. **Invalid Component Installation:**
+   - Initial error: `artifactregistry` component doesn't exist
+   - Solution: Removed invalid component, kept only `beta` component
+
+2. **Reserved Environment Variables:**
+   - Error: Cannot set reserved `PORT` environment variable
+   - Solution: Removed `PORT` from `--set-env-vars` as it's automatically managed by Cloud Run
+
+3. **Deployment Verification:**
+   - Added robust health check with retries
+   - Implemented proper URL output capture and verification
+   - Added timeout and proper error handling
+
+### 4. CI/CD Pipeline Optimization
+
+**Improvements implemented:**
+- Added caching for:
+  - pnpm dependencies
+  - Next.js build cache
+  - Docker layers
+- Separated build and deployment stages
+- Added proper condition checks for deployment
+- Implemented deployment verification
+
+### 5. Environment Configuration
+
+**Key considerations:**
+- All sensitive values stored in GitHub Secrets
+- Used proper environment variable injection
+- Configured production settings (`NODE_ENV=production`)
+- Set minimum instances to 1 to avoid cold starts
+
+### 6. Common Gotchas to Watch For
+
+1. **Docker Registry Path:**
+   - Must match exactly: `[REGION]-docker.pkg.dev/[PROJECT_ID]/[REPO_NAME]`
+   - Region must be consistent throughout configuration
+
+2. **Service Account Permissions:**
+   - Needs `Cloud Run Admin`, `Storage Admin`, `Artifact Registry Admin/Writer`
+   - Requires `Service Account User` and `Token Creator` roles
+
+3. **Environment Variables:**
+   - Don't set reserved vars like `PORT`
+   - Use secrets for sensitive values
+   - Remember to set `NODE_ENV=production`
+
+4. **Deployment Verification:**
+   - Wait for service to be fully ready
+   - Check for correct HTTP status codes
+   - Implement proper timeout and retry logic
+
+### 7. Best Practices Implemented
+
+1. **Security:**
+   - Used Workload Identity Federation
+   - Minimal service account permissions
+   - Secure secret management
+
+2. **Performance:**
+   - Implemented proper caching
+   - Configured minimum instances
+   - Used Docker layer optimization
+
+3. **Reliability:**
+   - Added deployment verification
+   - Implemented proper error handling
+   - Added health checks
+
+4. **Maintainability:**
+   - Clear workflow structure
+   - Proper environment separation
+   - Documented configuration
+
+---
+
 ## License
 
 MIT — over-engineer responsibly.

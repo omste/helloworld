@@ -245,81 +245,136 @@ During the setup of our Google Cloud Run deployment pipeline, we encountered and
 
 ### 3. Cloud Run Deployment Issues
 
-**Challenge:** Several deployment-specific issues needed to be resolved:
+**Challenge:** Several deployment-specific issues needed to be resolved.
 
-1. **Invalid Component Installation:**
-   - Initial error: `artifactregistry` component doesn't exist
-   - Solution: Removed invalid component, kept only `beta` component
+**Solutions:**
+- Removed invalid `artifactregistry` component from gcloud installation
+- Properly configured environment variables
+- Implemented health checks and deployment verification
+- Set up proper resource cleanup for preview environments
 
-2. **Reserved Environment Variables:**
-   - Error: Cannot set reserved `PORT` environment variable
-   - Solution: Removed `PORT` from `--set-env-vars` as it's automatically managed by Cloud Run
+## 📚 Detailed GCP Setup Guide
 
-3. **Deployment Verification:**
-   - Added robust health check with retries
-   - Implemented proper URL output capture and verification
-   - Added timeout and proper error handling
+### Workload Identity Federation Setup
 
-### 4. CI/CD Pipeline Optimization
+Traditional methods use service account keys stored as GitHub secrets. Our modern approach uses Workload Identity Federation for enhanced security:
 
-**Improvements implemented:**
-- Added caching for:
-  - pnpm dependencies
-  - Next.js build cache
-  - Docker layers
-- Separated build and deployment stages
-- Added proper condition checks for deployment
-- Implemented deployment verification
+```bash
+# 1. Create Workload Identity Pool
+gcloud iam workload-identity-pools create "github-actions-pool" \
+    --location="global" \
+    --description="Pool for GitHub Actions" \
+    --display-name="GitHub Actions Pool"
 
-### 5. Environment Configuration
+# 2. Create Workload Identity Provider
+gcloud iam workload-identity-pools providers create-oidc "github-provider" \
+    --location="global" \
+    --workload-identity-pool="github-actions-pool" \
+    --display-name="GitHub Actions Provider" \
+    --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
+    --issuer-uri="https://token.actions.githubusercontent.com"
+```
 
-**Key considerations:**
-- All sensitive values stored in GitHub Secrets
-- Used proper environment variable injection
-- Configured production settings (`NODE_ENV=production`)
-- Set minimum instances to 1 to avoid cold starts
+### Service Account Setup and IAM Roles
 
-### 6. Common Gotchas to Watch For
+Created a dedicated service account with specific roles:
 
-1. **Docker Registry Path:**
-   - Must match exactly: `[REGION]-docker.pkg.dev/[PROJECT_ID]/[REPO_NAME]`
-   - Region must be consistent throughout configuration
+```bash
+# Create service account
+gcloud iam service-accounts create github-actions-service \
+    --description="Service account for GitHub Actions" \
+    --display-name="GitHub Actions Service Account"
 
-2. **Service Account Permissions:**
-   - Needs `Cloud Run Admin`, `Storage Admin`, `Artifact Registry Admin/Writer`
-   - Requires `Service Account User` and `Token Creator` roles
+# Grant necessary roles
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-actions-service@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/run.admin"
 
-3. **Environment Variables:**
-   - Don't set reserved vars like `PORT`
-   - Use secrets for sensitive values
-   - Remember to set `NODE_ENV=production`
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-actions-service@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/artifactregistry.writer"
 
-4. **Deployment Verification:**
-   - Wait for service to be fully ready
-   - Check for correct HTTP status codes
-   - Implement proper timeout and retry logic
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-actions-service@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/storage.admin"
+```
 
-### 7. Best Practices Implemented
+**Role Explanations:**
+- `roles/run.admin`: For deploying and managing Cloud Run services
+- `roles/artifactregistry.writer`: For pushing Docker images
+- `roles/storage.admin`: For managing storage buckets (if needed)
 
-1. **Security:**
-   - Used Workload Identity Federation
-   - Minimal service account permissions
-   - Secure secret management
+### Workload Identity Federation Binding
 
-2. **Performance:**
-   - Implemented proper caching
-   - Configured minimum instances
-   - Used Docker layer optimization
+Connected the GitHub repository to the service account:
 
-3. **Reliability:**
-   - Added deployment verification
-   - Implemented proper error handling
-   - Added health checks
+```bash
+# Get the Workload Identity Pool ID
+POOL_ID=$(gcloud iam workload-identity-pools describe "github-actions-pool" \
+    --location="global" --format="value(name)")
 
-4. **Maintainability:**
-   - Clear workflow structure
-   - Proper environment separation
-   - Documented configuration
+# Create binding between GitHub repo and service account
+gcloud iam service-accounts add-iam-policy-binding \
+    "github-actions-service@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/iam.workloadIdentityUser" \
+    --member="principalSet://iam.googleapis.com/${POOL_ID}/attribute.repository/your-org/your-repo"
+```
+
+### Artifact Registry Setup
+
+Set up Docker repository for storing images:
+
+```bash
+# Create Docker repository
+gcloud artifacts repositories create helloworld-docker-repo \
+    --repository-format=docker \
+    --location=us-central1 \
+    --description="Docker repository for Next.js app"
+```
+
+### Required GitHub Secrets
+
+Add these secrets to your repository:
+```yaml
+GCP_PROJECT_ID: "your-project-id"
+GCP_PROJECT_NUMBER: "your-project-number"
+GCP_WORKLOAD_IDENTITY_PROVIDER_ID: "projects/123456789/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider"
+GCP_SERVICE_ACCOUNT_EMAIL: "github-actions-service@your-project-id.iam.gserviceaccount.com"
+CLOUD_RUN_SERVICE_NAME: "your-service-name"
+CLOUD_RUN_REGION: "us-central1"
+```
+
+### Authentication Flow
+
+1. GitHub Actions generates an OIDC token
+2. Token is exchanged with GCP's Security Token Service
+3. GCP verifies token and repository identity
+4. Temporary credentials are issued for the service account
+5. Credentials are used for GCP operations
+
+### Security Best Practices Implemented
+
+1. **Principle of Least Privilege:**
+   - Service account has minimal required permissions
+   - Workload Identity scoped to specific repository
+   - No static credentials stored
+
+2. **Resource Management:**
+   - Preview deployments use PR-specific names
+   - Production deployment has dedicated service name
+   - Clear environment separation
+
+3. **Cleanup Procedures:**
+   - Automatic cleanup of preview environments
+   - Resource tagging for tracking
+   - Proper deletion of unused services
+
+This setup provides:
+- Secure authentication between GitHub and GCP
+- Automated deployments for preview and production
+- Clean separation of environments
+- Proper access controls
+- Scalable infrastructure
 
 ---
 

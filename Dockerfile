@@ -39,6 +39,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Set OpenTelemetry configuration
 ENV OTEL_TRACES_EXPORTER="otlp"
 ENV OTEL_EXPORTER_OTLP_ENDPOINT="https://otlp-gateway-prod-gb-south-1.grafana.net/otlp"
+ENV OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic ${GRAFANA_CLOUD_KEY}"
 ENV OTEL_RESOURCE_ATTRIBUTES="service.name=my-app,service.namespace=my-application-group,deployment.environment=production"
 ENV OTEL_NODE_RESOURCE_DETECTORS="env,host,os"
 ENV NODE_OPTIONS="--require @opentelemetry/auto-instrumentations-node/register"

@@ -55,7 +55,7 @@ jobs:
     needs: lint_and_test
     runs-on: ubuntu-latest
     outputs:
-      preview_url: ${{ steps.deploy.outputs.url }}
+      preview_url: ${{ steps.url_output.outputs.preview_url }}
     
     permissions:
       contents: 'read'
@@ -122,13 +122,18 @@ jobs:
             --set-env-vars="NODE_ENV=production" \
             --tag pr-${{ github.event.number }} \
             --format='get(status.url)')
-          echo "url=${PREVIEW_URL}" >> $GITHUB_OUTPUT
+          echo "PREVIEW_URL=${PREVIEW_URL}" >> $GITHUB_ENV
+
+      - name: Set safe preview URL output
+        id: url_output
+        run: |
+          echo "preview_url=${PREVIEW_URL}" >> $GITHUB_OUTPUT
 
       - name: Comment PR with Preview URL
         uses: actions/github-script@v7
         with:
           script: |
-            const previewUrl = '${{ steps.deploy.outputs.url }}';
+            const previewUrl = process.env.PREVIEW_URL;
             const message = `🚀 Preview deployment is ready!\n\nYou can view your changes at: ${previewUrl}\n\nThis preview environment will be automatically cleaned up when the PR is closed.`;
             
             const comments = await github.rest.issues.listComments({

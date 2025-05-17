@@ -22,6 +22,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+# Add dummy env vars for build
+ENV DATABASE_URL="postgresql://dummy-user:dummy-password@dummy-host.neon.tech/dummy-db"
+ENV UPSTASH_REDIS_REST_URL="https://dummy-redis.upstash.io"
+ENV UPSTASH_REDIS_REST_TOKEN="dummy"
 
 RUN pnpm build
 

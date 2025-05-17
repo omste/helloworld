@@ -14,6 +14,11 @@ RUN pnpm install --frozen-lockfile --prod=false
 # Rebuild the source code only when needed
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Copy pnpm and its global installation from the deps stage
+COPY --from=deps /usr/local/bin/pnpm /usr/local/bin/
+COPY --from=deps /usr/local/lib/node_modules /usr/local/lib/node_modules
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 

@@ -223,3 +223,132 @@ pnpm test:e2e:report    # Show last Playwright HTML report
 ## License
 
 MIT — over-engineer responsibly.
+
+## CI/CD Setup with GitHub Actions and Google Cloud Run
+
+This project uses GitHub Actions for CI/CD and deploys to Google Cloud Run. Here's how to set it up from scratch:
+
+### 1. Google Cloud Project Setup
+
+1. Create a new Google Cloud Project
+   - Go to https://console.cloud.google.com
+   - Click "New Project"
+   - Name it something like `your-project-name`
+   - Note down the Project ID and Project Number
+
+2. Enable Required APIs
+   - Go to https://console.cloud.google.com/apis/dashboard
+   - Click "Enable APIs and Services"
+   - Enable these APIs:
+     - Cloud Run Admin API
+     - Cloud Deploy API
+     - Container Registry API
+     - Artifact Registry API
+     - Cloud Build API
+     - IAM Service Account Credentials API
+     - Identity and Access Management (IAM) API
+
+### 2. Service Account Setup
+
+1. Create Service Account
+   - Go to IAM & Admin > Service Accounts
+   - Click "CREATE SERVICE ACCOUNT"
+   - Name: `github-actions-service`
+   - Description: "Service account for GitHub Actions CI/CD pipeline"
+
+2. Grant Required Roles
+   - Cloud Run Admin (`roles/run.admin`)
+   - Storage Admin (`roles/storage.admin`)
+   - Artifact Registry Admin (`roles/artifactregistry.admin`)
+   - Service Account User (`roles/iam.serviceAccountUser`)
+
+3. Note down the service account email:
+   `github-actions-service@[PROJECT_ID].iam.gserviceaccount.com`
+
+### 3. Workload Identity Federation Setup
+
+1. Create Workload Identity Pool
+   - Go to IAM & Admin > Workload Identity Federation
+   - Click "CREATE POOL"
+   - Pool name: `github-actions-pool`
+   - Display name: "GitHub Actions Pool"
+   - Description: "Identity pool for GitHub Actions"
+
+2. Add Identity Provider
+   - Provider name: `github-provider`
+   - Issuer URL: `https://token.actions.githubusercontent.com`
+   - Configure attribute mapping:
+     - `google.subject`: `assertion.sub`
+     - `attribute.actor`: `assertion.actor`
+     - `attribute.repository`: `assertion.repository`
+     - `attribute.repository_owner`: `assertion.repository_owner`
+   - Add attribute condition:
+     ```
+     assertion.repository=='[GITHUB_USERNAME]/[REPO_NAME]'
+     ```
+
+### 4. Artifact Registry Setup
+
+1. Create Docker Repository
+   - Go to Artifact Registry
+   - Click "CREATE REPOSITORY"
+   - Name: `helloworld-docker-repo`
+   - Format: "Docker"
+   - Mode: "Standard"
+   - Region: "us-central1" (or your preferred region)
+   - Enable vulnerability scanning
+   - Use Google-managed encryption key
+
+### 5. GitHub Repository Setup
+
+1. Add GitHub Secrets
+   - Go to your GitHub repository
+   - Settings > Secrets and variables > Actions
+   - Add these secrets:
+     ```
+     GCP_PROJECT_ID: [Your Project ID]
+     GCP_PROJECT_NUMBER: [Your Project Number]
+     GCP_WORKLOAD_IDENTITY_POOL_ID: github-actions-pool
+     GCP_WORKLOAD_IDENTITY_PROVIDER_ID: github-provider
+     GCP_SERVICE_ACCOUNT_EMAIL: github-actions-service@[PROJECT_ID].iam.gserviceaccount.com
+     CLOUD_RUN_SERVICE_NAME: helloworld-nextjs-service
+     CLOUD_RUN_REGION: us-central1
+     ```
+   - Add any application-specific environment variables (e.g., DATABASE_URL)
+
+2. Add GitHub Actions Workflow
+   - Create `.github/workflows/ci.yml`
+   - Configure workflow to:
+     - Run tests and linting on PRs
+     - Deploy to Cloud Run on merge to main
+     - Use Workload Identity Federation for authentication
+     - Build and push Docker images to Artifact Registry
+
+### Workflow Overview
+
+The CI/CD pipeline:
+1. Runs on every PR to main:
+   - Linting
+   - Unit tests
+   - Build verification
+
+2. Runs on merge to main:
+   - All PR checks
+   - Builds Docker image
+   - Pushes to Artifact Registry
+   - Deploys to Cloud Run
+
+### Troubleshooting
+
+Common issues and solutions:
+1. Authentication failures: Check Workload Identity Federation setup and GitHub secrets
+2. Docker push failures: Verify Artifact Registry permissions
+3. Deployment failures: Check Cloud Run service account permissions
+
+### Local Development
+
+For local development:
+1. Install the Google Cloud CLI
+2. Authenticate: `gcloud auth login`
+3. Set project: `gcloud config set project [PROJECT_ID]`
+4. Configure Docker: `gcloud auth configure-docker [REGION]-docker.pkg.dev`

@@ -51,25 +51,31 @@ jobs:
         with:
           workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ secrets.GCP_WORKLOAD_IDENTITY_POOL_ID }}/providers/${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_ID }}'
           service_account: '${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}'
+          token_format: 'access_token'
 
       - name: Set up Cloud SDK
         uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: 'beta,artifactregistry'
 
-      - name: Configure Docker
-        run: gcloud auth configure-docker ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev --quiet
 
       - name: Build and Push Docker image
         env:
-          IMAGE_NAME: ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.CLOUD_RUN_SERVICE_NAME }}:${{ github.sha }}
+          REGISTRY: ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/helloworld-docker-repo
+          IMAGE_NAME: nextjs-app
         run: |
-          docker build . -t $IMAGE_NAME
-          docker push $IMAGE_NAME
+          docker build . -t $REGISTRY/$IMAGE_NAME:${{ github.sha }}
+          docker push $REGISTRY/$IMAGE_NAME:${{ github.sha }}
 
       - name: Deploy to Cloud Run
         id: deploy
         run: |
           gcloud run deploy ${{ secrets.CLOUD_RUN_SERVICE_NAME }} \
-            --image ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.CLOUD_RUN_SERVICE_NAME }}:${{ github.sha }} \
+            --image ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/helloworld-docker-repo/nextjs-app:${{ github.sha }} \
             --region ${{ secrets.CLOUD_RUN_REGION }} \
             --platform managed \
             --quiet \

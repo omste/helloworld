@@ -1,4 +1,4 @@
-# A Modern Hello World
+# A Modern Hello World Application
 
 A public, type-safe, CI-heavy Hello World app — fully loaded with modern tooling.
 

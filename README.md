@@ -378,6 +378,145 @@ This setup provides:
 
 ---
 
+## 📊 Observability with OpenTelemetry & Grafana Cloud
+
+This project uses OpenTelemetry (OTEL) for comprehensive observability, sending telemetry data to Grafana Cloud.
+
+### Quick Setup for New Projects
+
+1. **Update Service Information**
+   ```bash
+   # In Dockerfile and scripts/start-with-telemetry.sh
+   service.name=your-app-name
+   service.namespace=your-namespace
+   ```
+
+2. **Configure Grafana Endpoint**
+   ```bash
+   # Update in both files if your Grafana region differs
+   OTEL_EXPORTER_OTLP_ENDPOINT="https://otlp-gateway-prod-YOUR-REGION.grafana.net/otlp"
+   ```
+
+3. **Set GitHub Secret**
+   ```bash
+   GRAFANA_CLOUD_KEY=your_grafana_cloud_key
+   ```
+
+### Configuration Files
+
+1. **Environment Variables** (set in Dockerfile and start script)
+```bash
+OTEL_TRACES_EXPORTER="otlp"
+OTEL_EXPORTER_OTLP_ENDPOINT="https://otlp-gateway-prod-gb-south-1.grafana.net/otlp"
+OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic ${GRAFANA_CLOUD_KEY}"
+OTEL_RESOURCE_ATTRIBUTES="service.name=my-app,service.namespace=my-application-group"
+OTEL_NODE_RESOURCE_DETECTORS="env,host,os"
+NODE_OPTIONS="--require @opentelemetry/auto-instrumentations-node/register"
+```
+
+2. **Required Dependencies**
+```json
+{
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.59.0",
+    "@opentelemetry/sdk-node": "^0.201.0"
+  }
+}
+```
+
+### 🔧 Customization Points
+
+1. **Service Identity**
+   - `service.name`: Your application name
+   - `service.namespace`: Logical grouping of services
+   - `deployment.environment`: Automatically set based on NODE_ENV
+
+2. **Grafana Configuration**
+   - Region endpoint in OTLP URL
+   - Authentication key in GitHub Secrets
+   - Service attributes in resource configuration
+
+3. **Instrumentation Options**
+   - HTTP request tracking
+   - Database queries
+   - External API calls
+   - Custom metrics
+
+### 📁 Key Files to Modify
+
+1. **`Dockerfile`**
+   - Service information
+   - OpenTelemetry environment variables
+   - Node.js configuration
+
+2. **`scripts/start-with-telemetry.sh`**
+   - Local development configuration
+   - Debug settings
+   - Environment-specific variables
+
+3. **`src/lib/telemetry.ts`**
+   - Custom instrumentation
+   - Error handling
+   - Shutdown behavior
+
+### 🚀 Deployment Considerations
+
+1. **Environment Variables**
+   ```yaml
+   # In GitHub Actions workflows
+   env:
+     GRAFANA_CLOUD_KEY: ${{ secrets.GRAFANA_CLOUD_KEY }}
+   ```
+
+2. **Cloud Run Configuration**
+   ```bash
+   --set-env-vars="NODE_ENV=production,GRAFANA_CLOUD_KEY=${GRAFANA_CLOUD_KEY}"
+   ```
+
+3. **Preview Deployments**
+   - Unique service names per PR
+   - Separate telemetry streams
+   - Automatic cleanup
+
+### 🔍 Verification Steps
+
+1. **Local Testing**
+   ```bash
+   # Run with telemetry
+   ./scripts/start-with-telemetry.sh
+   
+   # Check Grafana Cloud for traces
+   # Your service will appear as: my-app (change to your service name)
+   ```
+
+2. **Production Verification**
+   - Check Grafana Cloud dashboard
+   - Verify service name appears
+   - Confirm trace data is flowing
+
+### ⚠️ Common Gotchas
+
+1. **Service Names**
+   - Must be consistent across all configuration points
+   - Used for grouping and filtering in Grafana
+   - Should be meaningful and unique
+
+2. **Authentication**
+   - Keep Grafana key secure in GitHub Secrets
+   - Update key if compromised
+   - Different keys for different environments
+
+3. **Resource Usage**
+   - Monitor trace volume
+   - Adjust sampling if needed
+   - Watch for cost implications
+
+4. **Debugging**
+   - Check environment variables are set
+   - Verify OTLP endpoint is correct
+   - Confirm authentication is working
+
 ## License
 
 MIT — over-engineer responsibly.

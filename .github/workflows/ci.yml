@@ -62,12 +62,16 @@ jobs:
         env:
           IMAGE_NAME: ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.CLOUD_RUN_SERVICE_NAME }}:${{ github.sha }}
         run: |
+          set -e
           docker build . -t $IMAGE_NAME
           docker push $IMAGE_NAME
+          echo "Successfully built and pushed $IMAGE_NAME"
 
       - name: Deploy to Cloud Run
         id: deploy
         run: |
+          set -e
+          echo "Deploying image: ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.CLOUD_RUN_SERVICE_NAME }}:${{ github.sha }}"
           SERVICE_URL=$(gcloud run deploy ${{ secrets.CLOUD_RUN_SERVICE_NAME }} \
             --image ${{ secrets.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.CLOUD_RUN_SERVICE_NAME }}:${{ github.sha }} \
             --region ${{ secrets.CLOUD_RUN_REGION }} \
@@ -79,6 +83,12 @@ jobs:
             --set-env-vars="UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" \
             --set-env-vars="PORT=3000" \
             --format='value(status.url)')
+          
+          if [ -z "$SERVICE_URL" ]; then
+            echo "::error::Failed to get SERVICE_URL from Cloud Run deployment."
+            exit 1
+          fi
+          
           echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_OUTPUT
           echo "Deployed to $SERVICE_URL"
 
@@ -108,7 +118,9 @@ jobs:
         if: steps.deploy.outputs.SERVICE_URL != ''
         env:
           PLAYWRIGHT_TARGET_URL: ${{ steps.deploy.outputs.SERVICE_URL }}
-        run: pnpm test:e2e
+        run: |
+          echo "Playwright tests will run against: $PLAYWRIGHT_TARGET_URL"
+          pnpm test:e2e
 
       - name: Upload Playwright report
         if: always()

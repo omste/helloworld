@@ -81,12 +81,16 @@ jobs:
           workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ secrets.GCP_WORKLOAD_IDENTITY_POOL_ID }}/providers/${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_ID }}'
           service_account: '${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}'
           token_format: 'access_token'
+          create_credentials_file: true
 
       - name: Set up Cloud SDK
         uses: 'google-github-actions/setup-gcloud@v2'
         with:
+          version: '>= 363.0.0'
           project_id: ${{ secrets.GCP_PROJECT_ID }}
-          install_components: 'beta'
+
+      - name: Install beta components
+        run: gcloud components install beta --quiet
 
       - name: Configure Docker for Artifact Registry
         run: |
@@ -117,7 +121,7 @@ jobs:
             --platform managed \
             --quiet \
             --allow-unauthenticated \
-            --set-env-vars="PORT=3000,NODE_ENV=production" \
+            --set-env-vars="NODE_ENV=production" \
             --min-instances=1 \
             --format='get(status.url)')
           echo "service_url=$SERVICE_URL" >> $GITHUB_OUTPUT

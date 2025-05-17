@@ -14,6 +14,9 @@ const nextConfig = {
     // !! WARN !!
     ignoreBuildErrors: true,
   },
+  experimental: {
+    instrumentationHook: true
+  }
 };
 
 export default nextConfig; 

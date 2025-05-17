@@ -121,7 +121,6 @@ jobs:
             --allow-unauthenticated \
             --set-env-vars="NODE_ENV=production" \
             --tag pr-${{ github.event.number }} \
-            --no-traffic \
             --format='get(status.url)')
           echo "url=${PREVIEW_URL}" >> $GITHUB_OUTPUT
 

@@ -119,7 +119,7 @@ jobs:
             --platform managed \
             --quiet \
             --allow-unauthenticated \
-            --set-env-vars="NODE_ENV=production,GRAFANA_CLOUD_KEY=${{ secrets.GRAFANA_CLOUD_KEY }},PORT=3000" \
+            --set-env-vars="NODE_ENV=production,GRAFANA_CLOUD_KEY=${{ secrets.GRAFANA_CLOUD_KEY }}" \
             --tag pr-${{ github.event.number }} \
             --format='get(status.url)')
           echo "url=${PREVIEW_URL}" >> $GITHUB_OUTPUT

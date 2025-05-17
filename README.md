@@ -26,12 +26,40 @@ A public, type-safe, CI-heavy Hello World app — fully loaded with modern tooli
 | Design           | Responsive layout                    |
 | Database         | Neon Postgres (Vercel) + Drizzle ORM |
 | Rate Limiting    | Upstash Redis                        |
+| Observability   | OpenTelemetry + Grafana Cloud        |
 
 ---
 
 ## ✨ Key Technologies & Patterns
 
 This project leverages several key technologies in specific ways to ensure type safety and a modern development experience, primarily centered around Next.js Server Actions.
+
+### OpenTelemetry with Grafana Cloud
+-   **Purpose:** Comprehensive observability with distributed tracing and metrics.
+-   **Configuration:** Environment variables required for OpenTelemetry:
+    ```bash
+    GRAFANA_CLOUD_KEY=your_grafana_cloud_key
+    OTEL_TRACES_EXPORTER=otlp
+    OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-gb-south-1.grafana.net/otlp
+    OTEL_RESOURCE_ATTRIBUTES=service.name=my-app,service.namespace=my-application-group,deployment.environment=production
+    OTEL_NODE_RESOURCE_DETECTORS=env,host,os
+    NODE_OPTIONS=--require @opentelemetry/auto-instrumentations-node/register
+    ```
+-   **Dependencies:**
+    ```json
+    {
+      "@opentelemetry/api": "^1.7.0",
+      "@opentelemetry/auto-instrumentations-node": "^0.41.1"
+    }
+    ```
+-   **Deployment Notes:**
+    - When deploying to Cloud Run, ensure commas in `OTEL_RESOURCE_ATTRIBUTES` are properly escaped
+    - Use YAML format for environment variables in Cloud Run deployment to avoid escaping issues
+    - Example env-vars.yaml:
+      ```yaml
+      OTEL_RESOURCE_ATTRIBUTES: "service.name=my-app,service.namespace=my-application-group,deployment.environment=production"
+      OTEL_NODE_RESOURCE_DETECTORS: "env,host,os"
+      ```
 
 ### Drizzle ORM with Neon Postgres
 -   **Database:** We use [Neon](https://neon.tech/) as our serverless Postgres provider. Connection details are managed via GitHub secrets and supplied to Google Cloud Run.
@@ -131,10 +159,35 @@ This combination allows us to build robust, type-safe server-side logic for our 
         - Authenticates to Google Cloud.
         - Builds the Docker image (potentially passing build-time ARGs like `DATABASE_URL` if needed by the Next.js build itself, though runtime is preferred for Cloud Run).
         - Pushes the Docker image to Google Container Registry (GCR) or Artifact Registry.
-        - Deploys the image to a Google Cloud Run service, configuring runtime environment variables (`DATABASE_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `PORT`).
+        - Deploys the image to a Google Cloud Run service, configuring runtime environment variables:
+          - Database: `DATABASE_URL`
+          - Redis: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
+          - OpenTelemetry: `GRAFANA_CLOUD_KEY`, `OTEL_*` variables (see OpenTelemetry section)
+          - System: `PORT`
         - Retrieves the URL of the deployed Cloud Run service.
         - Runs Playwright End-to-End tests against this live Cloud Run deployment.
         - Uploads test reports.
+
+### Cloud Run Deployment Notes
+- When deploying manually or through CI, use a YAML file for environment variables to avoid escaping issues:
+  ```yaml
+  NODE_ENV: production
+  GRAFANA_CLOUD_KEY: ${GRAFANA_CLOUD_KEY}
+  OTEL_TRACES_EXPORTER: otlp
+  OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-gb-south-1.grafana.net/otlp
+  OTEL_RESOURCE_ATTRIBUTES: "service.name=my-app,service.namespace=my-application-group,deployment.environment=production"
+  OTEL_NODE_RESOURCE_DETECTORS: "env,host,os"
+  NODE_OPTIONS: "--require @opentelemetry/auto-instrumentations-node/register"
+  ```
+- Deploy using: `gcloud run deploy SERVICE_NAME --env-vars-file=env-vars.yaml ...`
+- Ensure the Cloud Run service account has permission to pull images from Artifact Registry
+- For cross-project deployments, grant the Cloud Run service account the necessary permissions:
+  ```bash
+  gcloud artifacts repositories add-iam-policy-binding REPO_NAME \
+    --location=LOCATION \
+    --member=serviceAccount:service-PROJECT_NUMBER@serverless-robot-prod.iam.gserviceaccount.com \
+    --role=roles/artifactregistry.reader
+  ```
 
 ---
 
@@ -201,6 +254,7 @@ After completing the above GCP setup, configure the following secrets in your Gi
 -   `DATABASE_URL`: Connection string for your Neon database.
 -   `UPSTASH_REDIS_REST_URL`: URL for your Upstash Redis instance.
 -   `UPSTASH_REDIS_REST_TOKEN`: Token for your Upstash Redis instance.
+-   `GRAFANA_CLOUD_KEY`: Your Grafana Cloud API key for OpenTelemetry data ingestion.
 
 This setup enables the GitHub Actions workflow (`.github/workflows/ci.yml`) to authenticate to GCP using the `google-github-actions/auth` action.
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { initializeServices } from '@/lib/init';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -11,6 +12,11 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+// Initialize services (telemetry, etc.)
+if (process.env.NODE_ENV === 'production') {
+  initializeServices();
+}
 
 export const metadata: Metadata = {
   title: "Create Next App",

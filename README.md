@@ -1,4 +1,4 @@
-# Modern Hello World
+# A Modern Hello World
 
 A public, type-safe, CI-heavy Hello World app — fully loaded with modern tooling.
 
@@ -26,12 +26,40 @@ A public, type-safe, CI-heavy Hello World app — fully loaded with modern tooli
 | Design           | Responsive layout                    |
 | Database         | Neon Postgres (Vercel) + Drizzle ORM |
 | Rate Limiting    | Upstash Redis                        |
+| Observability   | OpenTelemetry + Grafana Cloud        |
 
 ---
 
 ## ✨ Key Technologies & Patterns
 
 This project leverages several key technologies in specific ways to ensure type safety and a modern development experience, primarily centered around Next.js Server Actions.
+
+### OpenTelemetry with Grafana Cloud
+-   **Purpose:** Comprehensive observability with distributed tracing and metrics.
+-   **Configuration:** Environment variables required for OpenTelemetry:
+    ```bash
+    GRAFANA_CLOUD_KEY=your_grafana_cloud_key
+    OTEL_TRACES_EXPORTER=otlp
+    OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-gb-south-1.grafana.net/otlp
+    OTEL_RESOURCE_ATTRIBUTES=service.name=my-app,service.namespace=my-application-group,deployment.environment=production
+    OTEL_NODE_RESOURCE_DETECTORS=env,host,os
+    NODE_OPTIONS=--require @opentelemetry/auto-instrumentations-node/register
+    ```
+-   **Dependencies:**
+    ```json
+    {
+      "@opentelemetry/api": "^1.7.0",
+      "@opentelemetry/auto-instrumentations-node": "^0.41.1"
+    }
+    ```
+-   **Deployment Notes:**
+    - When deploying to Cloud Run, ensure commas in `OTEL_RESOURCE_ATTRIBUTES` are properly escaped
+    - Use YAML format for environment variables in Cloud Run deployment to avoid escaping issues
+    - Example env-vars.yaml:
+      ```yaml
+      OTEL_RESOURCE_ATTRIBUTES: "service.name=my-app,service.namespace=my-application-group,deployment.environment=production"
+      OTEL_NODE_RESOURCE_DETECTORS: "env,host,os"
+      ```
 
 ### Drizzle ORM with Neon Postgres
 -   **Database:** We use [Neon](https://neon.tech/) as our serverless Postgres provider. Connection details are managed via GitHub secrets and supplied to Google Cloud Run.
@@ -63,6 +91,53 @@ This project leverages several key technologies in specific ways to ensure type 
     -   Rate-limited procedures (`rateLimitedProcedure`) can be easily defined and used for actions requiring protection against abuse.
 -   **Configuration:** Requires `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` environment variables.
 
+#### Redis Initialization Strategy
+-   **Graceful Initialization:**
+    ```typescript
+    let redis: Redis | null = null;
+    let ratelimit: Ratelimit | null = null;
+
+    try {
+      if (process.env.UPSTASH_REDIS_REST_URL && 
+          process.env.UPSTASH_REDIS_REST_TOKEN) {
+        redis = new Redis({
+          url: process.env.UPSTASH_REDIS_REST_URL,
+          token: process.env.UPSTASH_REDIS_REST_TOKEN,
+        });
+        ratelimit = new Ratelimit({
+          redis,
+          limiter: Ratelimit.slidingWindow(10, '10 s'),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to initialize Redis:', error);
+    }
+    ```
+
+-   **Fallback Mechanism:**
+    ```typescript
+    export const rateLimiter = ratelimit || {
+      limit: async () => ({ success: true, reset: Date.now() + 10000 }),
+    };
+    ```
+
+-   **Key Features:**
+    - Simple, environment-agnostic initialization
+    - Graceful error handling without throwing in any environment
+    - Type-safe implementation avoiding NODE_ENV type issues
+    - Fallback rate limiter when Redis is unavailable
+    - Zero-configuration required for development/testing
+    - Production-ready with proper error logging
+
+-   **Benefits:**
+    - Resilient to connection issues
+    - Works seamlessly in all environments
+    - No runtime errors if Redis is unavailable
+    - Simplified maintenance and debugging
+    - TypeScript-friendly implementation
+
+This approach ensures that your application remains functional even when Redis is not available, while still providing rate limiting capabilities in production when properly configured.
+
 This combination allows us to build robust, type-safe server-side logic for our Next.js application, leveraging the strengths of each tool within a Server Action-first architecture.
 
 ---
@@ -84,10 +159,35 @@ This combination allows us to build robust, type-safe server-side logic for our 
         - Authenticates to Google Cloud.
         - Builds the Docker image (potentially passing build-time ARGs like `DATABASE_URL` if needed by the Next.js build itself, though runtime is preferred for Cloud Run).
         - Pushes the Docker image to Google Container Registry (GCR) or Artifact Registry.
-        - Deploys the image to a Google Cloud Run service, configuring runtime environment variables (`DATABASE_URL`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `PORT`).
+        - Deploys the image to a Google Cloud Run service, configuring runtime environment variables:
+          - Database: `DATABASE_URL`
+          - Redis: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
+          - OpenTelemetry: `GRAFANA_CLOUD_KEY`, `OTEL_*` variables (see OpenTelemetry section)
+          - System: `PORT`
         - Retrieves the URL of the deployed Cloud Run service.
         - Runs Playwright End-to-End tests against this live Cloud Run deployment.
         - Uploads test reports.
+
+### Cloud Run Deployment Notes
+- When deploying manually or through CI, use a YAML file for environment variables to avoid escaping issues:
+  ```yaml
+  NODE_ENV: production
+  GRAFANA_CLOUD_KEY: ${GRAFANA_CLOUD_KEY}
+  OTEL_TRACES_EXPORTER: otlp
+  OTEL_EXPORTER_OTLP_ENDPOINT: https://otlp-gateway-prod-gb-south-1.grafana.net/otlp
+  OTEL_RESOURCE_ATTRIBUTES: "service.name=my-app,service.namespace=my-application-group,deployment.environment=production"
+  OTEL_NODE_RESOURCE_DETECTORS: "env,host,os"
+  NODE_OPTIONS: "--require @opentelemetry/auto-instrumentations-node/register"
+  ```
+- Deploy using: `gcloud run deploy SERVICE_NAME --env-vars-file=env-vars.yaml ...`
+- Ensure the Cloud Run service account has permission to pull images from Artifact Registry
+- For cross-project deployments, grant the Cloud Run service account the necessary permissions:
+  ```bash
+  gcloud artifacts repositories add-iam-policy-binding REPO_NAME \
+    --location=LOCATION \
+    --member=serviceAccount:service-PROJECT_NUMBER@serverless-robot-prod.iam.gserviceaccount.com \
+    --role=roles/artifactregistry.reader
+  ```
 
 ---
 
@@ -154,6 +254,7 @@ After completing the above GCP setup, configure the following secrets in your Gi
 -   `DATABASE_URL`: Connection string for your Neon database.
 -   `UPSTASH_REDIS_REST_URL`: URL for your Upstash Redis instance.
 -   `UPSTASH_REDIS_REST_TOKEN`: Token for your Upstash Redis instance.
+-   `GRAFANA_CLOUD_KEY`: Your Grafana Cloud API key for OpenTelemetry data ingestion.
 
 This setup enables the GitHub Actions workflow (`.github/workflows/ci.yml`) to authenticate to GCP using the `google-github-actions/auth` action.
 
@@ -245,83 +346,277 @@ During the setup of our Google Cloud Run deployment pipeline, we encountered and
 
 ### 3. Cloud Run Deployment Issues
 
-**Challenge:** Several deployment-specific issues needed to be resolved:
+**Challenge:** Several deployment-specific issues needed to be resolved.
 
-1. **Invalid Component Installation:**
-   - Initial error: `artifactregistry` component doesn't exist
-   - Solution: Removed invalid component, kept only `beta` component
+**Solutions:**
+- Removed invalid `artifactregistry` component from gcloud installation
+- Properly configured environment variables
+- Implemented health checks and deployment verification
+- Set up proper resource cleanup for preview environments
 
-2. **Reserved Environment Variables:**
-   - Error: Cannot set reserved `PORT` environment variable
-   - Solution: Removed `PORT` from `--set-env-vars` as it's automatically managed by Cloud Run
+## 📚 Detailed GCP Setup Guide
 
-3. **Deployment Verification:**
-   - Added robust health check with retries
-   - Implemented proper URL output capture and verification
-   - Added timeout and proper error handling
+### Workload Identity Federation Setup
 
-### 4. CI/CD Pipeline Optimization
+Traditional methods use service account keys stored as GitHub secrets. Our modern approach uses Workload Identity Federation for enhanced security:
 
-**Improvements implemented:**
-- Added caching for:
-  - pnpm dependencies
-  - Next.js build cache
-  - Docker layers
-- Separated build and deployment stages
-- Added proper condition checks for deployment
-- Implemented deployment verification
+```bash
+# 1. Create Workload Identity Pool
+gcloud iam workload-identity-pools create "github-actions-pool" \
+    --location="global" \
+    --description="Pool for GitHub Actions" \
+    --display-name="GitHub Actions Pool"
 
-### 5. Environment Configuration
+# 2. Create Workload Identity Provider
+gcloud iam workload-identity-pools providers create-oidc "github-provider" \
+    --location="global" \
+    --workload-identity-pool="github-actions-pool" \
+    --display-name="GitHub Actions Provider" \
+    --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository" \
+    --issuer-uri="https://token.actions.githubusercontent.com"
+```
 
-**Key considerations:**
-- All sensitive values stored in GitHub Secrets
-- Used proper environment variable injection
-- Configured production settings (`NODE_ENV=production`)
-- Set minimum instances to 1 to avoid cold starts
+### Service Account Setup and IAM Roles
 
-### 6. Common Gotchas to Watch For
+Created a dedicated service account with specific roles:
 
-1. **Docker Registry Path:**
-   - Must match exactly: `[REGION]-docker.pkg.dev/[PROJECT_ID]/[REPO_NAME]`
-   - Region must be consistent throughout configuration
+```bash
+# Create service account
+gcloud iam service-accounts create github-actions-service \
+    --description="Service account for GitHub Actions" \
+    --display-name="GitHub Actions Service Account"
 
-2. **Service Account Permissions:**
-   - Needs `Cloud Run Admin`, `Storage Admin`, `Artifact Registry Admin/Writer`
-   - Requires `Service Account User` and `Token Creator` roles
+# Grant necessary roles
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-actions-service@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/run.admin"
 
-3. **Environment Variables:**
-   - Don't set reserved vars like `PORT`
-   - Use secrets for sensitive values
-   - Remember to set `NODE_ENV=production`
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-actions-service@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/artifactregistry.writer"
 
-4. **Deployment Verification:**
-   - Wait for service to be fully ready
-   - Check for correct HTTP status codes
-   - Implement proper timeout and retry logic
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:github-actions-service@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/storage.admin"
+```
 
-### 7. Best Practices Implemented
+**Role Explanations:**
+- `roles/run.admin`: For deploying and managing Cloud Run services
+- `roles/artifactregistry.writer`: For pushing Docker images
+- `roles/storage.admin`: For managing storage buckets (if needed)
 
-1. **Security:**
-   - Used Workload Identity Federation
-   - Minimal service account permissions
-   - Secure secret management
+### Workload Identity Federation Binding
 
-2. **Performance:**
-   - Implemented proper caching
-   - Configured minimum instances
-   - Used Docker layer optimization
+Connected the GitHub repository to the service account:
 
-3. **Reliability:**
-   - Added deployment verification
-   - Implemented proper error handling
-   - Added health checks
+```bash
+# Get the Workload Identity Pool ID
+POOL_ID=$(gcloud iam workload-identity-pools describe "github-actions-pool" \
+    --location="global" --format="value(name)")
 
-4. **Maintainability:**
-   - Clear workflow structure
-   - Proper environment separation
-   - Documented configuration
+# Create binding between GitHub repo and service account
+gcloud iam service-accounts add-iam-policy-binding \
+    "github-actions-service@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/iam.workloadIdentityUser" \
+    --member="principalSet://iam.googleapis.com/${POOL_ID}/attribute.repository/your-org/your-repo"
+```
+
+### Artifact Registry Setup
+
+Set up Docker repository for storing images:
+
+```bash
+# Create Docker repository
+gcloud artifacts repositories create helloworld-docker-repo \
+    --repository-format=docker \
+    --location=us-central1 \
+    --description="Docker repository for Next.js app"
+```
+
+### Required GitHub Secrets
+
+Add these secrets to your repository:
+```yaml
+GCP_PROJECT_ID: "your-project-id"
+GCP_PROJECT_NUMBER: "your-project-number"
+GCP_WORKLOAD_IDENTITY_PROVIDER_ID: "projects/123456789/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider"
+GCP_SERVICE_ACCOUNT_EMAIL: "github-actions-service@your-project-id.iam.gserviceaccount.com"
+CLOUD_RUN_SERVICE_NAME: "your-service-name"
+CLOUD_RUN_REGION: "us-central1"
+```
+
+### Authentication Flow
+
+1. GitHub Actions generates an OIDC token
+2. Token is exchanged with GCP's Security Token Service
+3. GCP verifies token and repository identity
+4. Temporary credentials are issued for the service account
+5. Credentials are used for GCP operations
+
+### Security Best Practices Implemented
+
+1. **Principle of Least Privilege:**
+   - Service account has minimal required permissions
+   - Workload Identity scoped to specific repository
+   - No static credentials stored
+
+2. **Resource Management:**
+   - Preview deployments use PR-specific names
+   - Production deployment has dedicated service name
+   - Clear environment separation
+
+3. **Cleanup Procedures:**
+   - Automatic cleanup of preview environments
+   - Resource tagging for tracking
+   - Proper deletion of unused services
+
+This setup provides:
+- Secure authentication between GitHub and GCP
+- Automated deployments for preview and production
+- Clean separation of environments
+- Proper access controls
+- Scalable infrastructure
 
 ---
+
+## 📊 Observability with OpenTelemetry & Grafana Cloud
+
+This project uses OpenTelemetry (OTEL) for comprehensive observability, sending telemetry data to Grafana Cloud.
+
+### Quick Setup for New Projects
+
+1. **Update Service Information**
+   ```bash
+   # In Dockerfile and scripts/start-with-telemetry.sh
+   service.name=your-app-name
+   service.namespace=your-namespace
+   ```
+
+2. **Configure Grafana Endpoint**
+   ```bash
+   # Update in both files if your Grafana region differs
+   OTEL_EXPORTER_OTLP_ENDPOINT="https://otlp-gateway-prod-YOUR-REGION.grafana.net/otlp"
+   ```
+
+3. **Set GitHub Secret**
+   ```bash
+   GRAFANA_CLOUD_KEY=your_grafana_cloud_key
+   ```
+
+### Configuration Files
+
+1. **Environment Variables** (set in Dockerfile and start script)
+```bash
+OTEL_TRACES_EXPORTER="otlp"
+OTEL_EXPORTER_OTLP_ENDPOINT="https://otlp-gateway-prod-gb-south-1.grafana.net/otlp"
+OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic ${GRAFANA_CLOUD_KEY}"
+OTEL_RESOURCE_ATTRIBUTES="service.name=my-app,service.namespace=my-application-group"
+OTEL_NODE_RESOURCE_DETECTORS="env,host,os"
+NODE_OPTIONS="--require @opentelemetry/auto-instrumentations-node/register"
+```
+
+2. **Required Dependencies**
+```json
+{
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.59.0",
+    "@opentelemetry/sdk-node": "^0.201.0"
+  }
+}
+```
+
+### 🔧 Customization Points
+
+1. **Service Identity**
+   - `service.name`: Your application name
+   - `service.namespace`: Logical grouping of services
+   - `deployment.environment`: Automatically set based on NODE_ENV
+
+2. **Grafana Configuration**
+   - Region endpoint in OTLP URL
+   - Authentication key in GitHub Secrets
+   - Service attributes in resource configuration
+
+3. **Instrumentation Options**
+   - HTTP request tracking
+   - Database queries
+   - External API calls
+   - Custom metrics
+
+### 📁 Key Files to Modify
+
+1. **`Dockerfile`**
+   - Service information
+   - OpenTelemetry environment variables
+   - Node.js configuration
+
+2. **`scripts/start-with-telemetry.sh`**
+   - Local development configuration
+   - Debug settings
+   - Environment-specific variables
+
+3. **`src/lib/telemetry.ts`**
+   - Custom instrumentation
+   - Error handling
+   - Shutdown behavior
+
+### 🚀 Deployment Considerations
+
+1. **Environment Variables**
+   ```yaml
+   # In GitHub Actions workflows
+   env:
+     GRAFANA_CLOUD_KEY: ${{ secrets.GRAFANA_CLOUD_KEY }}
+   ```
+
+2. **Cloud Run Configuration**
+   ```bash
+   --set-env-vars="NODE_ENV=production,GRAFANA_CLOUD_KEY=${GRAFANA_CLOUD_KEY}"
+   ```
+
+3. **Preview Deployments**
+   - Unique service names per PR
+   - Separate telemetry streams
+   - Automatic cleanup
+
+### 🔍 Verification Steps
+
+1. **Local Testing**
+   ```bash
+   # Run with telemetry
+   ./scripts/start-with-telemetry.sh
+   
+   # Check Grafana Cloud for traces
+   # Your service will appear as: my-app (change to your service name)
+   ```
+
+2. **Production Verification**
+   - Check Grafana Cloud dashboard
+   - Verify service name appears
+   - Confirm trace data is flowing
+
+### ⚠️ Common Gotchas
+
+1. **Service Names**
+   - Must be consistent across all configuration points
+   - Used for grouping and filtering in Grafana
+   - Should be meaningful and unique
+
+2. **Authentication**
+   - Keep Grafana key secure in GitHub Secrets
+   - Update key if compromised
+   - Different keys for different environments
+
+3. **Resource Usage**
+   - Monitor trace volume
+   - Adjust sampling if needed
+   - Watch for cost implications
+
+4. **Debugging**
+   - Check environment variables are set
+   - Verify OTLP endpoint is correct
+   - Confirm authentication is working
 
 ## License
 

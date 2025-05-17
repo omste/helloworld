@@ -1,48 +1,29 @@
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { Resource } from '@opentelemetry/resources';
-import { SemanticResourceAttributes } from '@opentelemetry/semantic-conventions';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { diag, DiagLogLevel, DiagLogger } from '@opentelemetry/api';
 
-const GRAFANA_OTLP_ENDPOINT = 'https://otlp-gateway-prod-gb-south-1.grafana.net/otlp';
+// Create a logger that implements the DiagLogger interface
+const logger: DiagLogger = {
+  error: (...args: unknown[]) => console.error(...args),
+  warn: (...args: unknown[]) => console.warn(...args),
+  info: (...args: unknown[]) => console.info(...args),
+  debug: (...args: unknown[]) => console.debug(...args),
+  verbose: (...args: unknown[]) => console.debug(...args), // Map verbose to debug since console doesn't have verbose
+};
 
-export function setupTelemetry() {
-  const sdk = new NodeSDK({
-    resource: new Resource({
-      [SemanticResourceAttributes.SERVICE_NAME]: 'my-app',
-      [SemanticResourceAttributes.SERVICE_NAMESPACE]: 'my-application-group',
-      [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV || 'development',
-    }),
-    traceExporter: new OTLPTraceExporter({
-      url: GRAFANA_OTLP_ENDPOINT,
-      headers: {
-        Authorization: `Basic ${Buffer.from(process.env.GRAFANA_CLOUD_KEY || '').toString('base64')}`,
-      },
-    }),
-    instrumentations: [
-      getNodeAutoInstrumentations({
-        '@opentelemetry/instrumentation-fs': {
-          enabled: false,
-        },
-        '@opentelemetry/instrumentation-http': {
-          enabled: true,
-          requestHook: (span, request) => {
-            if (request.url?.includes(GRAFANA_OTLP_ENDPOINT)) {
-              span.updateName('Telemetry Export');
-              span.setAttribute('telemetry.export', true);
-            }
-          }
-        },
-      }),
-    ],
-  });
+// For troubleshooting, set the log level to DiagLogLevel.DEBUG
+diag.setLogger(logger, DiagLogLevel.INFO);
 
-  sdk.start();
+export async function setupTelemetry(): Promise<void> {
+  try {
+    if (!process.env.GRAFANA_CLOUD_KEY) {
+      console.log('Skipping telemetry setup - GRAFANA_CLOUD_KEY not found');
+      return;
+    }
 
-  process.on('SIGTERM', () => {
-    sdk.shutdown()
-      .then(() => console.log('Tracing terminated'))
-      .catch((error) => console.error('Error terminating tracing', error))
-      .finally(() => process.exit(0));
-  });
+    // The auto-instrumentation will be loaded via NODE_OPTIONS
+    // This is already set in the Dockerfile:
+    // NODE_OPTIONS="--require @opentelemetry/auto-instrumentations-node/register"
+    console.log('Telemetry initialized via auto-instrumentation');
+  } catch (error) {
+    console.error('Error during telemetry setup:', error instanceof Error ? error.message : String(error));
+  }
 } 

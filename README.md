@@ -63,6 +63,53 @@ This project leverages several key technologies in specific ways to ensure type 
     -   Rate-limited procedures (`rateLimitedProcedure`) can be easily defined and used for actions requiring protection against abuse.
 -   **Configuration:** Requires `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` environment variables.
 
+#### Redis Initialization Strategy
+-   **Graceful Initialization:**
+    ```typescript
+    let redis: Redis | null = null;
+    let ratelimit: Ratelimit | null = null;
+
+    try {
+      if (process.env.UPSTASH_REDIS_REST_URL && 
+          process.env.UPSTASH_REDIS_REST_TOKEN) {
+        redis = new Redis({
+          url: process.env.UPSTASH_REDIS_REST_URL,
+          token: process.env.UPSTASH_REDIS_REST_TOKEN,
+        });
+        ratelimit = new Ratelimit({
+          redis,
+          limiter: Ratelimit.slidingWindow(10, '10 s'),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to initialize Redis:', error);
+    }
+    ```
+
+-   **Fallback Mechanism:**
+    ```typescript
+    export const rateLimiter = ratelimit || {
+      limit: async () => ({ success: true, reset: Date.now() + 10000 }),
+    };
+    ```
+
+-   **Key Features:**
+    - Simple, environment-agnostic initialization
+    - Graceful error handling without throwing in any environment
+    - Type-safe implementation avoiding NODE_ENV type issues
+    - Fallback rate limiter when Redis is unavailable
+    - Zero-configuration required for development/testing
+    - Production-ready with proper error logging
+
+-   **Benefits:**
+    - Resilient to connection issues
+    - Works seamlessly in all environments
+    - No runtime errors if Redis is unavailable
+    - Simplified maintenance and debugging
+    - TypeScript-friendly implementation
+
+This approach ensures that your application remains functional even when Redis is not available, while still providing rate limiting capabilities in production when properly configured.
+
 This combination allows us to build robust, type-safe server-side logic for our Next.js application, leveraging the strengths of each tool within a Server Action-first architecture.
 
 ---

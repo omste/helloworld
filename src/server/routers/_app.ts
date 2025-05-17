@@ -5,7 +5,7 @@ import { messages } from '@/db/schema';
 export const appRouter = router({
   greeting: publicProcedure
     .input(z.object({ name: z.string().optional() }).optional())
-    .query(async ({ input, ctx }) => {
+    .query(async ({ input }) => {
       return {
         text: `Hello ${input?.name ?? 'world'} from the server!`,
       };

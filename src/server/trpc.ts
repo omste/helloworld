@@ -35,7 +35,7 @@ const rateLimitMiddleware = t.middleware(async ({ ctx, next }) => {
     });
   }
 
-  const { success, limit, remaining, reset } = await rateLimiter.limit(identifier);
+  const { success, reset } = await rateLimiter.limit(identifier);
 
   if (!success) {
     const retryAfter = Math.ceil((reset - Date.now()) / 1000);

@@ -26,7 +26,12 @@ export function setupTelemetry() {
         },
         '@opentelemetry/instrumentation-http': {
           enabled: true,
-          ignoreOutgoingUrls: [GRAFANA_OTLP_ENDPOINT], // Prevent infinite loops
+          requestHook: (span, request) => {
+            if (request.url?.includes(GRAFANA_OTLP_ENDPOINT)) {
+              span.updateName('Telemetry Export');
+              span.setAttribute('telemetry.export', true);
+            }
+          }
         },
       }),
     ],

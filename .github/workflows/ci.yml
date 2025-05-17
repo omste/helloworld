@@ -1,12 +1,16 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches:
       - main
-  pull_request: # This will trigger for PRs to main from forks and local branches
+  pull_request:
     branches:
       - main
+
+env:
+  REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/helloworld-docker-repo
+  IMAGE_NAME: nextjs-app
 
 jobs:
   lint_unit_build:
@@ -15,125 +19,119 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
+
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 'latest'
-      - name: Install dependencies
-        run: pnpm install
-      - name: Lint
-        run: pnpm lint
-      - name: Run Unit Tests
-        run: pnpm test:unit
-      - name: Build
-        run: pnpm build
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
-          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
-
-  e2e_tests:
-    name: E2E Tests (vs Vercel)
-    runs-on: ubuntu-latest
-    needs: lint_unit_build
-    if: >
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 8
-          run_install: false
-
-      - name: Install Vercel CLI
-        run: sudo npm install -g vercel
-
-      - name: Link Vercel Project
-        run: vercel link --yes --token=${{ secrets.VERCEL_TOKEN }} --project=${{ secrets.VERCEL_PROJECT_ID }} --org=${{ secrets.VERCEL_ORG_ID }}
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Get Vercel Deployment URL
-        id: get_url
-        run: |
-          URL=""
-          COMMIT_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
-          echo "Looking for Vercel deployment for commit: $COMMIT_SHA on project ${{ secrets.VERCEL_PROJECT_NAME }}"
-          
-          for i in {1..15}; do
-            if [ "${{ github.event_name }}" == "pull_request" ]; then
-              DEPLOYMENT_ID=$(vercel ls ${{ secrets.VERCEL_PROJECT_NAME }} --token=${{ secrets.VERCEL_TOKEN }} --meta commitSha=${COMMIT_SHA} --state READY | tail -n 1 | awk '{print $1}')
-              if [ -n "$DEPLOYMENT_ID" ] && [ "$DEPLOYMENT_ID" != "Found" ] && [ "$DEPLOYMENT_ID" != "No" ]; then
-                 URL=$(vercel inspect $DEPLOYMENT_ID --token=${{ secrets.VERCEL_TOKEN }} | jq -r .url)
-                 if [ -n "$URL" ] && [ "$URL" != "null" ]; then
-                   echo "Preview URL found: $URL (Deployment ID: $DEPLOYMENT_ID)"
-                   break
-                 fi
-              fi
-            elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/main" ]; then
-              URL=$(vercel inspect --prod ${{ secrets.VERCEL_PROJECT_NAME }} --token=${{ secrets.VERCEL_TOKEN }} | jq -r .url)
-              if [ -n "$URL" ] && [ "$URL" != "null" ]; then
-                echo "Production URL found: $URL"
-                break
-              fi
-            fi
-            echo "Deployment URL not found yet for commit $COMMIT_SHA (attempt $i/15). Waiting 20 seconds..."
-            sleep 20
-          done
-
-          if [ -z "$URL" ] || [ "$URL" == "null" ]; then
-            echo "::error::Failed to retrieve Vercel deployment URL for commit $COMMIT_SHA on project ${{ secrets.VERCEL_PROJECT_NAME }} after multiple attempts."
-            exit 1
-          fi
-          echo "url=https://$URL" >> $GITHUB_OUTPUT
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_PROJECT_NAME: ${{ secrets.VERCEL_PROJECT_NAME }}
 
       - name: Get pnpm store directory
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
-      - name: Setup pnpm cache
+      - name: Cache pnpm dependencies
         uses: actions/cache@v4
         with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          path: |
+            ${{ env.STORE_PATH }}
+            .next/cache
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+            ${{ runner.os }}-pnpm-
 
-      - name: Install test dependencies
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run Playwright tests
-        if: steps.get_url.outputs.url != ''
-        env:
-          PLAYWRIGHT_TARGET_URL: ${{ steps.get_url.outputs.url }}
-        run: pnpm test:e2e
+      - name: Lint
+        run: pnpm lint
 
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Run Unit Tests
+        run: pnpm test:unit
+
+      - name: Build Next.js app
+        run: pnpm build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+  deploy_to_cloud_run:
+    name: Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    needs: lint_unit_build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: 'google-github-actions/auth@v2'
         with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 7 
+          workload_identity_provider: 'projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/${{ secrets.GCP_WORKLOAD_IDENTITY_POOL_ID }}/providers/${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER_ID }}'
+          service_account: '${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}'
+          token_format: 'access_token'
+
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          install_components: 'beta,artifactregistry'
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_TELEMETRY_DISABLED=1
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        run: |
+          SERVICE_URL=$(gcloud run deploy ${{ secrets.CLOUD_RUN_SERVICE_NAME }} \
+            --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --region ${{ secrets.CLOUD_RUN_REGION }} \
+            --platform managed \
+            --quiet \
+            --allow-unauthenticated \
+            --set-env-vars="PORT=3000,NODE_ENV=production" \
+            --min-instances=1 \
+            --format='get(status.url)')
+          echo "service_url=$SERVICE_URL" >> $GITHUB_OUTPUT
+
+      - name: Verify Deployment
+        run: |
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          until curl -s -o /dev/null -w "%{http_code}" "${{ steps.deploy.outputs.service_url }}" | grep -q "200\|301\|302"; do
+            if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+              echo "Failed to verify deployment after $MAX_RETRIES attempts"
+              exit 1
+            fi
+            echo "Waiting for service to be ready..."
+            sleep 10
+            RETRY_COUNT=$((RETRY_COUNT+1))
+          done
+          echo "✅ Service is ready at ${{ steps.deploy.outputs.service_url }}"

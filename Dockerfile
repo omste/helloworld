@@ -22,10 +22,6 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
-# Add dummy env vars for build
-ENV DATABASE_URL="postgresql://dummy-user:dummy-password@dummy-host.neon.tech/dummy-db"
-ENV UPSTASH_REDIS_REST_URL="https://dummy-redis.upstash.io"
-ENV UPSTASH_REDIS_REST_TOKEN="dummy"
 
 RUN pnpm build
 
@@ -35,14 +31,6 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-
-# Set OpenTelemetry configuration
-ENV OTEL_TRACES_EXPORTER="otlp"
-ENV OTEL_EXPORTER_OTLP_ENDPOINT="https://otlp-gateway-prod-gb-south-1.grafana.net/otlp"
-ENV OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic ${GRAFANA_CLOUD_KEY}"
-ENV OTEL_RESOURCE_ATTRIBUTES="service.name=my-app,service.namespace=my-application-group,deployment.environment=production"
-ENV OTEL_NODE_RESOURCE_DETECTORS="env,host,os"
-ENV NODE_OPTIONS="--require @opentelemetry/auto-instrumentations-node/register"
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

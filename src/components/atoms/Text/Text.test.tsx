@@ -18,9 +18,11 @@ describe('Text', () => {
     const textElement = container.firstChild as HTMLElement;
     expect(textElement).toHaveClass(
       'text-white',
-      'text-4xl',
-      'md:text-6xl',
-      'lg:text-7xl',
+      'text-2xl',
+      'transition-all',
+      'duration-300',
+      'md:text-4xl',
+      'lg:text-6xl',
       'font-light'
     );
   });

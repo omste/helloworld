@@ -119,29 +119,12 @@ describe('MessageService', () => {
       expect(messageService.trpc.greeting.query).toHaveBeenCalled();
     });
 
-    it('should return fallback message on tRPC errors', async () => {
+    it('should throw error when tRPC call fails', async () => {
       const error = new Error('tRPC error');
       // @ts-expect-error - accessing mocked property
       messageService.trpc.greeting.query.mockRejectedValue(error);
 
-      const message = await messageService.getWelcomeMessage();
-      expect(message).toEqual({
-        content: 'Welcome to our application!'
-      });
-      expect(console.error).toHaveBeenCalledWith('Failed to get welcome message:', error);
-    });
-
-    it('should return fallback message during build time', async () => {
-      setNodeEnv('production');
-      // @ts-expect-error - removing window
-      delete global.window;
-      
-      const message = await messageService.getWelcomeMessage();
-      expect(message).toEqual({
-        content: 'Welcome to our application!'
-      });
-      // @ts-expect-error - accessing mocked property
-      expect(messageService.trpc.greeting.query).not.toHaveBeenCalled();
+      await expect(messageService.getWelcomeMessage()).rejects.toThrow('tRPC error');
     });
   });
 
@@ -156,7 +139,7 @@ describe('MessageService', () => {
       expect(messageService.trpc.addMessage.mutate).toHaveBeenCalledWith({ text: testMessage });
     });
 
-    it('should handle tRPC mutation errors', async () => {
+    it('should throw error when tRPC mutation fails', async () => {
       const error = new Error('Mutation error');
       const testMessage = 'Test message';
       // @ts-expect-error - accessing mocked property
@@ -181,25 +164,12 @@ describe('MessageService', () => {
       expect(messageService.trpc.getMessages.query).toHaveBeenCalled();
     });
 
-    it('should return empty array on tRPC errors', async () => {
+    it('should throw error when tRPC query fails', async () => {
       const error = new Error('tRPC error');
       // @ts-expect-error - accessing mocked property
       messageService.trpc.getMessages.query.mockRejectedValue(error);
 
-      const messages = await messageService.getMessages();
-      expect(messages).toEqual([]);
-      expect(console.error).toHaveBeenCalledWith('Failed to get messages:', error);
-    });
-
-    it('should return empty array during build time', async () => {
-      setNodeEnv('production');
-      // @ts-expect-error - removing window
-      delete global.window;
-      
-      const messages = await messageService.getMessages();
-      expect(messages).toEqual([]);
-      // @ts-expect-error - accessing mocked property
-      expect(messageService.trpc.getMessages.query).not.toHaveBeenCalled();
+      await expect(messageService.getMessages()).rejects.toThrow('tRPC error');
     });
   });
 }); 

@@ -62,7 +62,8 @@ export class MessageService {
   }
 
   public async getMessages(): Promise<DatabaseMessage[]> {
-    return await this.trpc.getMessages.query();
+    const messages = await this.trpc.getMessages.query();
+    return messages;
   }
 
   // Extensible for future features like:

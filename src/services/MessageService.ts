@@ -17,10 +17,11 @@ export class MessageService {
 
   private constructor() {
     const getBaseUrl = () => {
-      // Check if we're in a build/SSG environment
-      const isBuild = process.env.NODE_ENV === 'production' && typeof window === 'undefined';
+      // Check if we're in a build/SSG environment (but not test)
+      const isBuildTime = process.env.NODE_ENV === 'production' && typeof window === 'undefined';
+      const isTest = process.env.NODE_ENV === 'test';
       
-      if (isBuild) {
+      if (isBuildTime && !isTest) {
         // During build time, return a dummy URL as we'll use fallback data
         return 'http://localhost:3000';
       }
@@ -31,8 +32,11 @@ export class MessageService {
       }
 
       // Server-side runtime (not build time) should use environment variables
-      if (process.env.VERCEL_URL) {
-        return `https://${process.env.VERCEL_URL}`;
+      // For Cloud Run, we can use K_SERVICE and other environment variables
+      if (process.env.K_SERVICE) {
+        const region = process.env.CLOUD_RUN_REGION || 'us-central1';
+        const projectId = process.env.GCP_PROJECT_ID;
+        return `https://${process.env.K_SERVICE}-${projectId}.run.app`;
       }
       
       return `http://localhost:${process.env.PORT ?? 3000}`;
@@ -56,8 +60,11 @@ export class MessageService {
   }
 
   public async getWelcomeMessage(): Promise<Message> {
-    // During build/SSG, return fallback content immediately
-    if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
+    // During build/SSG (but not test), return fallback content immediately
+    const isBuildTime = process.env.NODE_ENV === 'production' && typeof window === 'undefined';
+    const isTest = process.env.NODE_ENV === 'test';
+    
+    if (isBuildTime && !isTest) {
       return {
         content: 'Welcome to our application!'
       };
@@ -81,8 +88,11 @@ export class MessageService {
   }
 
   public async getMessages(): Promise<DatabaseMessage[]> {
-    // During build/SSG, return empty array
-    if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
+    // During build/SSG (but not test), return empty array
+    const isBuildTime = process.env.NODE_ENV === 'production' && typeof window === 'undefined';
+    const isTest = process.env.NODE_ENV === 'test';
+    
+    if (isBuildTime && !isTest) {
       return [];
     }
 

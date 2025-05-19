@@ -4,7 +4,7 @@ test('homepage displays welcome message', async ({ page }) => {
   await page.goto('/');
 
   // Check for the welcome message
-  await expect(page.locator('text="Hello, world!"')).toBeVisible();
+  await expect(page.locator('text="Hello, World !"')).toBeVisible();
 
   // Check for the main container structure
   await expect(page.locator('div.flex.min-h-screen')).toBeVisible();

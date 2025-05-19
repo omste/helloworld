@@ -93,9 +93,12 @@ graph LR
     style DB fill:#efebe9,stroke:#3e2723
     style RD fill:#ffebee,stroke:#b71c1c
 
-    %% Subgraph styles
-    classDef subgraph-style fill:none,stroke:#666,stroke-dasharray: 5 5
-    class Client,tRPC Layer,Data Layer,Infrastructure,Middleware subgraph-style
+    %% Apply styles to subgraphs
+    style Client fill:none,stroke:#666,stroke-dasharray: 5 5
+    style tRPC_Layer fill:none,stroke:#666,stroke-dasharray: 5 5
+    style Infrastructure fill:none,stroke:#666,stroke-dasharray: 5 5
+    style Data_Layer fill:none,stroke:#666,stroke-dasharray: 5 5
+    style Middleware fill:none,stroke:#666,stroke-dasharray: 5 5
 ```
 
 #### Flow

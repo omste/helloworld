@@ -1,9 +1,9 @@
-name: CI
+name: CI/CD
 
 # Production deployment pipeline
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
 
 env:
   REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/helloworld-docker-repo
@@ -57,8 +57,8 @@ jobs:
         flags: unittests
         name: codecov-umbrella
 
-  lint_unit_build:
-    name: Lint, Unit Test, and Build
+  lint_and_test:
+    name: Lint and Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -96,19 +96,15 @@ jobs:
         run: pnpm lint
 
       - name: Run Unit Tests
-        run: pnpm test:unit
-
-      - name: Build Next.js app
-        run: pnpm build
         env:
-          NEXT_TELEMETRY_DISABLED: 1
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: pnpm test:unit
 
   deploy_to_cloud_run:
     name: Deploy to Cloud Run
+    needs: lint_and_test
     runs-on: ubuntu-latest
-    needs: lint_unit_build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
+    
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -154,6 +150,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             NEXT_TELEMETRY_DISABLED=1
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
 
       - name: Deploy to Cloud Run
         id: deploy
@@ -164,22 +161,25 @@ jobs:
             --platform managed \
             --quiet \
             --allow-unauthenticated \
-            --set-env-vars="NODE_ENV=production,UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }},UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }},K_SERVICE_URL=$(gcloud run services describe ${{ secrets.CLOUD_RUN_SERVICE_NAME }} --region ${{ secrets.CLOUD_RUN_REGION }} --format='get(status.url)')" \
+            --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }},UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }},K_SERVICE_URL=$(gcloud run services describe ${{ secrets.CLOUD_RUN_SERVICE_NAME }} --region ${{ secrets.CLOUD_RUN_REGION }} --format='get(status.url)')" \
             --min-instances=1 \
             --format='get(status.url)')
-          echo "service_url=$SERVICE_URL" >> $GITHUB_OUTPUT
+          echo "service_url=${SERVICE_URL}" >> $GITHUB_OUTPUT
 
-      - name: Verify Deployment
+      - name: Wait for deployment to be ready
         run: |
-          MAX_RETRIES=5
+          echo "Starting verification for deployment URL: ${{ steps.deploy.outputs.service_url }}"
+          MAX_RETRIES=12
           RETRY_COUNT=0
+          INITIAL_SLEEP=10
           until curl -s -o /dev/null -w "%{http_code}" "${{ steps.deploy.outputs.service_url }}" | grep -q "200\|301\|302"; do
             if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
               echo "Failed to verify deployment after $MAX_RETRIES attempts"
               exit 1
             fi
-            echo "Waiting for service to be ready..."
-            sleep 10
+            SLEEP_TIME=$((INITIAL_SLEEP * (2 ** RETRY_COUNT)))
+            echo "Waiting for service to be ready... (Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES, sleeping ${SLEEP_TIME}s)"
+            sleep $SLEEP_TIME
             RETRY_COUNT=$((RETRY_COUNT+1))
           done
           echo "✅ Service is ready at ${{ steps.deploy.outputs.service_url }}"

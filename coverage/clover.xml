@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1747683277469" clover="3.2.0">
-  <project timestamp="1747683277469" name="All files">
-    <metrics statements="93" coveredstatements="86" conditionals="37" coveredconditionals="29" methods="34" coveredmethods="30" elements="164" coveredelements="145" complexity="0" loc="93" ncloc="93" packages="10" files="12" classes="12"/>
+<coverage generated="1747689100926" clover="3.2.0">
+  <project timestamp="1747689100926" name="All files">
+    <metrics statements="105" coveredstatements="92" conditionals="42" coveredconditionals="30" methods="36" coveredmethods="31" elements="183" coveredelements="153" complexity="0" loc="105" ncloc="105" packages="10" files="12" classes="12"/>
     <package name="app.api.message">
       <metrics statements="17" coveredstatements="17" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
       <file name="route.ts" path="/Users/admin/om/helloworld/src/app/api/message/route.ts">
@@ -138,27 +138,39 @@
       </file>
     </package>
     <package name="services">
-      <metrics statements="18" coveredstatements="15" conditionals="7" coveredconditionals="4" methods="6" coveredmethods="6"/>
+      <metrics statements="30" coveredstatements="21" conditionals="12" coveredconditionals="5" methods="8" coveredmethods="7"/>
       <file name="MessageService.ts" path="/Users/admin/om/helloworld/src/services/MessageService.ts">
-        <metrics statements="18" coveredstatements="15" conditionals="7" coveredconditionals="4" methods="6" coveredmethods="6"/>
+        <metrics statements="30" coveredstatements="21" conditionals="12" coveredconditionals="5" methods="8" coveredmethods="7"/>
         <line num="1" count="2" type="stmt"/>
         <line num="2" count="2" type="stmt"/>
         <line num="13" count="35" type="stmt"/>
         <line num="18" count="13" type="stmt"/>
-        <line num="19" count="13" type="cond" truecount="1" falsecount="0"/>
-        <line num="21" count="12" type="cond" truecount="0" falsecount="1"/>
-        <line num="22" count="0" type="cond" truecount="0" falsecount="2"/>
-        <line num="23" count="0" type="stmt"/>
-        <line num="24" count="0" type="stmt"/>
-        <line num="27" count="12" type="cond" truecount="2" falsecount="0"/>
-        <line num="30" count="13" type="stmt"/>
-        <line num="41" count="21" type="cond" truecount="1" falsecount="0"/>
-        <line num="42" count="13" type="stmt"/>
-        <line num="44" count="21" type="stmt"/>
-        <line num="48" count="2" type="stmt"/>
-        <line num="49" count="1" type="stmt"/>
-        <line num="55" count="2" type="stmt"/>
-        <line num="59" count="2" type="stmt"/>
+        <line num="20" count="13" type="cond" truecount="1" falsecount="0"/>
+        <line num="23" count="12" type="cond" truecount="0" falsecount="1"/>
+        <line num="26" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="30" count="12" type="cond" truecount="2" falsecount="0"/>
+        <line num="33" count="13" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="49" count="21" type="cond" truecount="1" falsecount="0"/>
+        <line num="50" count="13" type="stmt"/>
+        <line num="52" count="21" type="stmt"/>
+        <line num="56" count="6" type="cond" truecount="1" falsecount="1"/>
+        <line num="60" count="2" type="cond" truecount="0" falsecount="1"/>
+        <line num="61" count="0" type="stmt"/>
+        <line num="62" count="0" type="stmt"/>
+        <line num="65" count="2" type="stmt"/>
+        <line num="66" count="2" type="stmt"/>
+        <line num="67" count="1" type="stmt"/>
+        <line num="68" count="1" type="stmt"/>
+        <line num="74" count="2" type="cond" truecount="0" falsecount="1"/>
+        <line num="75" count="0" type="stmt"/>
+        <line num="76" count="0" type="stmt"/>
+        <line num="78" count="2" type="stmt"/>
+        <line num="82" count="2" type="cond" truecount="0" falsecount="1"/>
+        <line num="83" count="0" type="stmt"/>
+        <line num="84" count="0" type="stmt"/>
+        <line num="86" count="2" type="stmt"/>
       </file>
     </package>
   </project>

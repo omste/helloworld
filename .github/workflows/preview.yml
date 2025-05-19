@@ -125,14 +125,11 @@ jobs:
             --platform managed \
             --quiet \
             --allow-unauthenticated \
-            --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }},UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" \
+            --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }},UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }},K_SERVICE_URL=$(gcloud run services describe ${{ steps.preview_name.outputs.preview_name }} --region ${{ secrets.CLOUD_RUN_REGION }} --format='get(status.url)')" \
             --tag pr-${{ github.event.number }} \
             --format='get(status.url)')
+          # Set both env var and output
           echo "PREVIEW_URL=${PREVIEW_URL}" >> $GITHUB_ENV
-
-      - name: Set safe preview URL output
-        id: url_output
-        run: |
           echo "preview_url=${PREVIEW_URL}" >> $GITHUB_OUTPUT
 
       - name: Comment PR with Preview URL
@@ -178,6 +175,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Debug Preview URL
+        run: |
+          echo "Preview URL from previous job: ${{ needs.preview_deploy.outputs.preview_url }}"
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -198,7 +199,34 @@ jobs:
         env:
           PLAYWRIGHT_TEST_BASE_URL: ${{ needs.preview_deploy.outputs.preview_url }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: pnpm test:e2e
+        run: |
+          if [ -z "$PLAYWRIGHT_TEST_BASE_URL" ]; then
+            echo "Error: PLAYWRIGHT_TEST_BASE_URL is not set! Cannot run E2E tests without a valid preview URL."
+            exit 1
+          fi
+          
+          if [[ ! "$PLAYWRIGHT_TEST_BASE_URL" =~ .*run\.app.* ]]; then
+            echo "Error: PLAYWRIGHT_TEST_BASE_URL must be a Cloud Run URL. Got: $PLAYWRIGHT_TEST_BASE_URL"
+            exit 1
+          fi
+          
+          echo "Running tests against Cloud Run preview: $PLAYWRIGHT_TEST_BASE_URL"
+          
+          # Wait for preview to be ready
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          until curl -s -o /dev/null -w "%{http_code}" "$PLAYWRIGHT_TEST_BASE_URL" | grep -q "200\|301\|302"; do
+            if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+              echo "Failed to verify preview deployment after $MAX_RETRIES attempts"
+              exit 1
+            fi
+            echo "Waiting for preview to be ready..."
+            sleep 10
+            RETRY_COUNT=$((RETRY_COUNT+1))
+          done
+          
+          echo "✅ Preview is ready at $PLAYWRIGHT_TEST_BASE_URL"
+          pnpm test:e2e
 
       - name: Upload test results
         if: always()

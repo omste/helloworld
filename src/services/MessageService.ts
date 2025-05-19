@@ -16,14 +16,17 @@ export class MessageService {
 
   private constructor() {
     const getBaseUrl = () => {
+      // Browser should use relative URL
       if (typeof window !== 'undefined') return '';
       
+      // Handle Cloud Run deployments
       if (process.env.K_SERVICE) {
-        const region = process.env.CLOUD_RUN_REGION || 'us-central1';
-        const projectId = process.env.GCP_PROJECT_ID;
-        return `https://${process.env.K_SERVICE}-${projectId}.${region}.run.app`;
+        // For Cloud Run, we should use the request URL from the environment
+        // This handles both production and preview deployments automatically
+        return process.env.K_SERVICE_URL || 'http://localhost:3000';
       }
       
+      // Default to localhost for development
       return `http://localhost:${process.env.PORT ?? 3000}`;
     };
 
@@ -32,6 +35,11 @@ export class MessageService {
         httpBatchLink({
           url: `${getBaseUrl()}/api/trpc`,
           transformer: superjson,
+          headers: () => {
+            // Log the URL being used for debugging
+            console.log('🔗 tRPC URL:', `${getBaseUrl()}/api/trpc`);
+            return {};
+          }
         }),
       ],
     });

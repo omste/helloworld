@@ -7,9 +7,8 @@ test('homepage displays welcome message', async ({ page }) => {
   const contentBox = await page.waitForSelector('div.p-8.rounded-3xl');
   const message = await contentBox.textContent();
   
-  // The message should exist and contain 'Hello'
-  expect(message).toBeTruthy();
-  expect(message?.toLowerCase()).toContain('hello');
+  // Verify the exact message from our test database
+  expect(message).toBe('Hello, World from E2E test!');
 
   // Check for the main container structure
   await expect(page.locator('div.flex.min-h-screen')).toBeVisible();

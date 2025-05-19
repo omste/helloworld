@@ -140,8 +140,8 @@ jobs:
           echo "Raw preview URL: ${PREVIEW_URL}"
           echo "::endgroup::"
 
-          # Set the outputs
-          echo "preview_url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
+          # Mark the URL as safe to pass between jobs by adding a prefix
+          echo "preview_url=url:${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
 
           echo "::group::Debug - GITHUB_OUTPUT contents"
           echo "GITHUB_OUTPUT file location: $GITHUB_OUTPUT"
@@ -241,11 +241,19 @@ jobs:
 
       - name: Run E2E tests against preview
         env:
-          PLAYWRIGHT_TEST_BASE_URL: ${{ needs.preview_deploy.outputs.preview_url }}
+          RAW_PREVIEW_URL: ${{ needs.preview_deploy.outputs.preview_url }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           echo "::group::Debug - Test Environment"
-          echo "PLAYWRIGHT_TEST_BASE_URL: $PLAYWRIGHT_TEST_BASE_URL"
+          echo "Raw preview_url output: $RAW_PREVIEW_URL"
+          
+          # Remove the url: prefix
+          PLAYWRIGHT_TEST_BASE_URL=${RAW_PREVIEW_URL#url:}
+          echo "PLAYWRIGHT_TEST_BASE_URL (after prefix removal): $PLAYWRIGHT_TEST_BASE_URL"
+          
+          # Export for the rest of the step
+          export PLAYWRIGHT_TEST_BASE_URL
+          
           echo "All environment variables:"
           env | grep -i url || true
           echo "::endgroup::"
@@ -254,7 +262,7 @@ jobs:
           if [ -z "$PLAYWRIGHT_TEST_BASE_URL" ]; then
             echo "Error: PLAYWRIGHT_TEST_BASE_URL is not set! Cannot run E2E tests without a valid preview URL."
             echo "Available outputs from preview_deploy job:"
-            echo "- preview_url: ${{ needs.preview_deploy.outputs.preview_url }}"
+            echo "- preview_url: $RAW_PREVIEW_URL"
             exit 1
           fi
           

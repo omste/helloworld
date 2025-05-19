@@ -4,12 +4,12 @@ import { ErrorBoundary } from "@/components/atoms/ErrorBoundary/ErrorBoundary";
 import { ImageService } from "@/services/ImageService";
 import { MessageService } from "@/services/MessageService";
 
-export default function Home() {
+export default async function Home() {
   const imageService = ImageService.getInstance();
   const messageService = MessageService.getInstance();
   
   const backgroundImage = imageService.getBackgroundImage();
-  const welcomeMessage = messageService.getWelcomeMessage();
+  const welcomeMessage = await messageService.getWelcomeMessage();
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">

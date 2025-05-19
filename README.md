@@ -12,6 +12,66 @@ This is a modern, production-ready web service deployed on Google Cloud Run. It 
 - **Rate Limiting:** Upstash Redis
 - **Validation:** tRPC + Zod for server-side logic and input validation
 
+### Data Flow Architecture
+
+The application follows a modern, type-safe data flow pattern:
+
+1. **Server Components (React Server Components)**
+   - Handle initial data fetching
+   - Provide static and dynamic server-rendered content
+   - Direct database access via Drizzle ORM
+   - Zero client-side JavaScript for static content
+
+2. **Server Actions (Next.js)**
+   - Handle form submissions and mutations
+   - Direct integration with tRPC procedures
+   - Automatic form validation and error handling
+   - Progressive enhancement for non-JS clients
+
+3. **tRPC Layer**
+   - Type-safe API procedures
+   - Input validation using Zod schemas
+   - Rate limiting via Upstash Redis
+   - Error handling and logging
+
+4. **Database Layer**
+   - Neon PostgreSQL for data persistence
+   - Drizzle ORM for type-safe queries
+   - Automatic connection pooling
+   - Prepared statements for security
+
+### Data Flow Example
+
+> Note: The following diagram is rendered automatically by GitHub using Mermaid. If you're viewing this elsewhere, see the flow description below.
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#32CD32', 'edgeLabelBackground':'#fff', 'tertiaryColor': '#fff'}}}%%
+graph LR
+    A[Server Component] --> B[tRPC Router]
+    C[Server Action] --> B
+    B --> D[Rate Limiter]
+    D --> E[Drizzle ORM]
+    E --> F[Neon PostgreSQL]
+    style A fill:#e1f5fe,stroke:#01579b
+    style B fill:#fff3e0,stroke:#ff6f00
+    style C fill:#e8f5e9,stroke:#1b5e20
+    style D fill:#fce4ec,stroke:#880e4f
+    style E fill:#f3e5f5,stroke:#4a148c
+    style F fill:#ede7f6,stroke:#311b92
+```
+
+#### Flow Description
+The data flows through the following components:
+1. **Entry Points:**
+   - Server Components make direct database queries for initial page load
+   - Server Actions handle form submissions and user interactions
+2. **Processing:**
+   - Both entry points go through the tRPC Router for type-safe validation
+   - Requests pass through Rate Limiter to prevent abuse
+3. **Data Access:**
+   - Drizzle ORM provides type-safe database operations
+   - Finally reaches Neon PostgreSQL for data persistence
+
 ## Key Features
 
 - **Type Safety:** Ensured through tRPC and Zod, providing robust server-side logic and input validation.
@@ -70,6 +130,23 @@ End-to-end tests are run against the preview environments to ensure that the app
   ```bash
   pnpm db:studio
   ```
+
+### Environment Variables
+
+The following environment variables are required:
+
+```env
+# Database
+DATABASE_URL=postgres://user:pass@host:5432/db
+
+# Redis for Rate Limiting
+UPSTASH_REDIS_REST_URL=https://your-instance.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your-token
+
+# Optional
+NODE_ENV=development
+PORT=3000
+```
 
 ## GCP Setup
 

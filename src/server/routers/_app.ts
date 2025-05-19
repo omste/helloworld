@@ -6,8 +6,7 @@ import { TRPCError } from '@trpc/server';
 
 export const appRouter = router({
   greeting: publicProcedure
-    .input(z.object({ name: z.string().optional() }).optional())
-    .query(async ({ input, ctx }) => {
+    .query(async ({ ctx }) => {
       try {
         const latestMessage = await ctx.db.select().from(messages).orderBy(desc(messages.id)).limit(1);
         

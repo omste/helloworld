@@ -44,46 +44,49 @@ The app follows a type-safe data flow pattern:
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#32CD32', 'edgeLabelBackground':'#fff', 'tertiaryColor': '#fff'}}}%%
 graph LR
-    subgraph Client
-        RSC[Server Components]
-        SA[Server Actions]
-        MS[MessageService]
-    end
+    %% Cloud Platform
+    subgraph "Google Cloud Run"
+        direction TB
+        subgraph "Next.js Server"
+            Page[Next.js Page]
+            SC[Server Component]
+            SA[Server Action]
+        end
 
-    subgraph "tRPC Layer"
-        TR[tRPC Router]
-        subgraph "Middleware"
+        subgraph "tRPC API Layer"
+            direction TB
             RL[Rate Limiter]
+            TR[tRPC Router]
             ZV[Zod Validation]
+            MS[MessageService]
+        end
+
+        subgraph "Data Layer"
+            DO[Drizzle ORM]
         end
     end
 
-    subgraph "Infrastructure"
+    %% External Services
+    subgraph "External Services"
         RD[(Upstash Redis)]
-    end
-
-    subgraph "Data Layer"
-        DO[Drizzle ORM]
         DB[(Neon PostgreSQL)]
     end
 
-    %% Client to tRPC connections
-    RSC --> MS
+    %% Flow
+    Page --> SC
+    Page --> SA
+    SC --> MS
     SA --> MS
     MS --> TR
-
-    %% tRPC internal flow
     TR --> RL
-    TR --> ZV
     RL --> RD
-    RL --> DO
-    ZV --> DO
-
-    %% Data layer
+    RL --> |if allowed| ZV
+    ZV --> |validated| DO
     DO --> DB
 
     %% Styles
-    style RSC fill:#e1f5fe,stroke:#01579b
+    style Page fill:#e1f5fe,stroke:#01579b
+    style SC fill:#e1f5fe,stroke:#01579b
     style SA fill:#e8f5e9,stroke:#1b5e20
     style MS fill:#fff3e0,stroke:#ff6f00
     style TR fill:#fce4ec,stroke:#880e4f
@@ -93,25 +96,32 @@ graph LR
     style DB fill:#efebe9,stroke:#3e2723
     style RD fill:#ffebee,stroke:#b71c1c
 
-    %% Apply styles to subgraphs
-    style Client fill:none,stroke:#666,stroke-dasharray: 5 5
-    style tRPC_Layer fill:none,stroke:#666,stroke-dasharray: 5 5
-    style Infrastructure fill:none,stroke:#666,stroke-dasharray: 5 5
-    style Data_Layer fill:none,stroke:#666,stroke-dasharray: 5 5
-    style Middleware fill:none,stroke:#666,stroke-dasharray: 5 5
+    %% Container styles
+    style Next.js Server fill:none,stroke:#666,stroke-dasharray: 5 5
+    style tRPC API Layer fill:none,stroke:#666,stroke-dasharray: 5 5
+    style Data Layer fill:none,stroke:#666,stroke-dasharray: 5 5
+    style External Services fill:none,stroke:#666,stroke-dasharray: 5 5
+    style Google Cloud Run fill:none,stroke:#4285f4,stroke-width:2px
 ```
 
 #### Flow
 The data flows through the following components:
+
 1. **Entry Points:**
-   - Server Components use tRPC procedures for data fetching
-2. **Processing:**
-   - All requests go through the tRPC Router for type-safe validation
-   - Input validation is handled by Zod schemas (e.g., `messageInputSchema`, `messageResponseSchema`)
-   - Requests pass through Rate Limiter to prevent abuse
+   - Next.js Pages contain Server Components and Server Actions
+   - Server Components fetch data through the MessageService
+   - Server Actions handle mutations through the MessageService
+
+2. **API Processing:**
+   - MessageService creates type-safe tRPC client requests
+   - Requests first go through Rate Limiting middleware
+   - If rate limit allows, Zod validates input/output
+   - tRPC Router handles routing to correct procedure
+
 3. **Data Access:**
-   - Drizzle ORM provides type-safe database operations
-   - Finally reaches Neon PostgreSQL for data persistence
+   - Validated requests use Drizzle ORM for database operations
+   - External services (Redis, PostgreSQL) handle persistence
+   - All runs serverless on Google Cloud Run
 
 ## Key Features
 

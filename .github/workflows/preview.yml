@@ -119,6 +119,7 @@ jobs:
       - name: Deploy Preview to Cloud Run
         id: deploy
         run: |
+          # Deploy and capture URL
           PREVIEW_URL=$(gcloud run deploy ${{ steps.preview_name.outputs.preview_name }} \
             --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:pr-${{ github.event.number }} \
             --region ${{ secrets.CLOUD_RUN_REGION }} \
@@ -128,17 +129,47 @@ jobs:
             --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }},UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }},K_SERVICE_URL=$(gcloud run services describe ${{ steps.preview_name.outputs.preview_name }} --region ${{ secrets.CLOUD_RUN_REGION }} --format='get(status.url)')" \
             --tag pr-${{ github.event.number }} \
             --format='get(status.url)')
-          echo "Preview URL from deployment: ${PREVIEW_URL}"
-          echo "preview_url=${PREVIEW_URL}" >> $GITHUB_OUTPUT
-          echo "PREVIEW_URL=${PREVIEW_URL}" >> $GITHUB_ENV
-          echo "Verify preview_url was set:"
-          echo "GITHUB_OUTPUT contents:"
-          cat $GITHUB_OUTPUT
 
-      - name: Verify Preview URL
+          # Verify we got a URL
+          if [ -z "$PREVIEW_URL" ]; then
+            echo "Error: Failed to get preview URL from Cloud Run deployment"
+            exit 1
+          fi
+
+          echo "::group::Debug - Initial URL"
+          echo "Raw preview URL: ${PREVIEW_URL}"
+          echo "::endgroup::"
+
+          # Set the outputs
+          echo "preview_url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
+
+          echo "::group::Debug - GITHUB_OUTPUT contents"
+          echo "GITHUB_OUTPUT file location: $GITHUB_OUTPUT"
+          echo "GITHUB_OUTPUT contents:"
+          cat "$GITHUB_OUTPUT"
+          echo "::endgroup::"
+
+      - name: Verify Preview URL Output
         run: |
-          echo "Preview URL from env: $PREVIEW_URL"
-          echo "Preview URL from output: ${{ steps.deploy.outputs.preview_url }}"
+          echo "::group::Debug - Step outputs"
+          echo "deploy.outputs.preview_url: ${{ steps.deploy.outputs.preview_url }}"
+          echo "GITHUB_OUTPUT contents:"
+          cat "$GITHUB_OUTPUT"
+          echo "::endgroup::"
+
+      - name: Log Final Job Outputs
+        run: |
+          echo "::group::Debug - Final outputs"
+          echo "Current step outputs:"
+          echo "- deploy.preview_url: ${{ steps.deploy.outputs.preview_url }}"
+          echo "Current job outputs:"
+          echo "- job.outputs.preview_url: ${{ job.outputs.preview_url }}"
+          echo "- needs.preview_deploy.outputs.preview_url: ${{ needs.preview_deploy.outputs.preview_url }}"
+          echo "Environment:"
+          env | grep -i url || true
+          echo "GITHUB_OUTPUT contents:"
+          cat "$GITHUB_OUTPUT"
+          echo "::endgroup::"
 
       - name: Comment PR with Preview URL
         uses: actions/github-script@v7
@@ -180,12 +211,17 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Debug Job Context
+        run: |
+          echo "::group::Debug - Job Context"
+          echo "Available outputs from preview_deploy job:"
+          echo "- preview_url: ${{ needs.preview_deploy.outputs.preview_url }}"
+          echo "Environment variables:"
+          env | grep -i url || true
+          echo "::endgroup::"
+
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Debug Preview URL
-        run: |
-          echo "Preview URL from previous job: ${{ needs.preview_deploy.outputs.preview_url }}"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -208,11 +244,21 @@ jobs:
           PLAYWRIGHT_TEST_BASE_URL: ${{ needs.preview_deploy.outputs.preview_url }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
+          echo "::group::Debug - Test Environment"
+          echo "PLAYWRIGHT_TEST_BASE_URL: $PLAYWRIGHT_TEST_BASE_URL"
+          echo "All environment variables:"
+          env | grep -i url || true
+          echo "::endgroup::"
+
+          # First verify we have the URL
           if [ -z "$PLAYWRIGHT_TEST_BASE_URL" ]; then
             echo "Error: PLAYWRIGHT_TEST_BASE_URL is not set! Cannot run E2E tests without a valid preview URL."
+            echo "Available outputs from preview_deploy job:"
+            echo "- preview_url: ${{ needs.preview_deploy.outputs.preview_url }}"
             exit 1
           fi
           
+          # Then verify it's a Cloud Run URL
           if [[ ! "$PLAYWRIGHT_TEST_BASE_URL" =~ .*run\.app.* ]]; then
             echo "Error: PLAYWRIGHT_TEST_BASE_URL must be a Cloud Run URL. Got: $PLAYWRIGHT_TEST_BASE_URL"
             exit 1

@@ -9,6 +9,7 @@ env:
   IMAGE_NAME: nextjs-app-preview
   UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
   UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
 jobs:
   lint_and_test:
@@ -50,6 +51,8 @@ jobs:
         run: pnpm lint
 
       - name: Run Unit Tests
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm test:unit
 
   preview_deploy:
@@ -111,6 +114,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             NEXT_TELEMETRY_DISABLED=1
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
 
       - name: Deploy Preview to Cloud Run
         id: deploy
@@ -121,7 +125,7 @@ jobs:
             --platform managed \
             --quiet \
             --allow-unauthenticated \
-            --set-env-vars="NODE_ENV=production,UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }},UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" \
+            --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }},UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" \
             --tag pr-${{ github.event.number }} \
             --format='get(status.url)')
           echo "PREVIEW_URL=${PREVIEW_URL}" >> $GITHUB_ENV
@@ -193,6 +197,7 @@ jobs:
       - name: Run E2E tests against preview
         env:
           PLAYWRIGHT_TEST_BASE_URL: ${{ needs.preview_deploy.outputs.preview_url }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm test:e2e
 
       - name: Upload test results

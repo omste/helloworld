@@ -45,7 +45,9 @@ export class MessageService {
   }
 
   public async getWelcomeMessage(): Promise<MessageResponse> {
+    console.log('📤 Calling tRPC greeting procedure...');
     const result = await this.trpc.greeting.query();
+    console.log('📥 tRPC response:', result);
     return {
       text: result.text
     };

@@ -11,9 +11,12 @@ if (!isBuildTime && !process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL environment variable is not set');
 }
 
+// Create a type for our database
+type DB = ReturnType<typeof drizzle<typeof schema>>;
+
 // Skip database initialization during build time
 const db = isBuildTime ? 
-  null as any : // During build time, just return null (will never be used)
+  {} as DB : // During build time, return empty object with DB type
   drizzle(neon(process.env.DATABASE_URL!), { schema });
 
 export interface Context {

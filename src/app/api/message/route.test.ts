@@ -6,14 +6,34 @@ import type { Message } from '@/services/MessageService';
 
 // Mock dependencies
 jest.mock('@/services/MessageService');
-jest.mock('@/lib/logger');
+jest.mock('@/lib/logger', () => {
+  const mockLogger = {
+    info: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+  };
+  return {
+    Logger: {
+      getInstance: jest.fn(() => mockLogger),
+    },
+  };
+});
+
+jest.mock('next/server', () => ({
+  NextResponse: {
+    json: jest.fn((data, init) => {
+      return {
+        status: init?.status || 200,
+        json: async () => data,
+      };
+    }),
+  },
+}));
 
 describe('Message API Route', () => {
   let mockGetWelcomeMessage: jest.Mock<Message>;
-  let mockLoggerInfo: jest.Mock;
-  let mockLoggerError: jest.Mock;
-  let mockLoggerWarn: jest.Mock;
-  let mockLoggerDebug: jest.Mock;
+  let mockLogger: ReturnType<typeof Logger.getInstance>;
 
   beforeEach(() => {
     // Setup MessageService mocks
@@ -22,18 +42,8 @@ describe('Message API Route', () => {
       getWelcomeMessage: mockGetWelcomeMessage
     } as MessageService);
 
-    // Setup Logger mocks
-    mockLoggerInfo = jest.fn();
-    mockLoggerError = jest.fn();
-    mockLoggerWarn = jest.fn();
-    mockLoggerDebug = jest.fn();
-    const mockLogger = {
-      info: mockLoggerInfo,
-      error: mockLoggerError,
-      warn: mockLoggerWarn,
-      debug: mockLoggerDebug,
-    };
-    jest.spyOn(Logger, 'getInstance').mockReturnValue(mockLogger as unknown as Logger);
+    // Get the mocked logger instance
+    mockLogger = Logger.getInstance();
   });
 
   afterEach(() => {
@@ -49,12 +59,12 @@ describe('Message API Route', () => {
 
     expect(response.status).toBe(200);
     expect(data).toEqual(mockMessage);
-    expect(mockLoggerInfo).toHaveBeenCalledWith('Fetching welcome message');
-    expect(mockLoggerInfo).toHaveBeenCalledWith('Welcome message fetched successfully', { message: mockMessage });
+    expect(mockLogger.info).toHaveBeenCalledWith('Fetching welcome message');
+    expect(mockLogger.info).toHaveBeenCalledWith('Welcome message fetched successfully', { message: mockMessage });
   });
 
   it('should handle AppError correctly', async () => {
-    const error = new AppError('Custom error', '418');
+    const error = new AppError('Custom error', 418);
     mockGetWelcomeMessage.mockImplementation(() => {
       throw error;
     });
@@ -64,7 +74,7 @@ describe('Message API Route', () => {
 
     expect(response.status).toBe(418);
     expect(data).toEqual({ error: 'Custom error' });
-    expect(mockLoggerError).toHaveBeenCalledWith('Error fetching welcome message', error);
+    expect(mockLogger.error).toHaveBeenCalledWith('Error fetching welcome message', error);
   });
 
   it('should handle unknown errors as ServiceError', async () => {
@@ -78,7 +88,7 @@ describe('Message API Route', () => {
 
     expect(response.status).toBe(500);
     expect(data).toEqual({ error: 'Failed to fetch welcome message' });
-    expect(mockLoggerError).toHaveBeenCalledWith('Error fetching welcome message', error);
+    expect(mockLogger.error).toHaveBeenCalledWith('Error fetching welcome message', error);
   });
 
   it('should handle null/undefined errors', async () => {
@@ -91,6 +101,6 @@ describe('Message API Route', () => {
 
     expect(response.status).toBe(500);
     expect(data).toEqual({ error: 'Failed to fetch welcome message' });
-    expect(mockLoggerError).toHaveBeenCalledWith('Error fetching welcome message', null);
+    expect(mockLogger.error).toHaveBeenCalledWith('Error fetching welcome message', null);
   });
 }); 

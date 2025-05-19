@@ -9,10 +9,11 @@ describe('Background', () => {
 
   it('renders the background image with correct props', () => {
     render(<Background {...props} />);
-    const image = screen.getByAlt(props.alt);
+    const image = screen.getByRole('img', { name: props.alt });
     
     expect(image).toBeInTheDocument();
     expect(image).toHaveAttribute('src');
+    expect(image.getAttribute('src')).toContain(encodeURIComponent(props.imageSrc));
     expect(image).toHaveClass('object-cover');
   });
 

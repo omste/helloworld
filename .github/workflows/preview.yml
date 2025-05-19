@@ -60,7 +60,7 @@ jobs:
     needs: lint_and_test
     runs-on: ubuntu-latest
     outputs:
-      preview_url: ${{ steps.url_output.outputs.preview_url }}
+      preview_url: ${{ steps.deploy.outputs.preview_url }}
     
     permissions:
       contents: 'read'
@@ -128,9 +128,17 @@ jobs:
             --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }},UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }},K_SERVICE_URL=$(gcloud run services describe ${{ steps.preview_name.outputs.preview_name }} --region ${{ secrets.CLOUD_RUN_REGION }} --format='get(status.url)')" \
             --tag pr-${{ github.event.number }} \
             --format='get(status.url)')
-          # Set both env var and output
-          echo "PREVIEW_URL=${PREVIEW_URL}" >> $GITHUB_ENV
+          echo "Preview URL from deployment: ${PREVIEW_URL}"
           echo "preview_url=${PREVIEW_URL}" >> $GITHUB_OUTPUT
+          echo "PREVIEW_URL=${PREVIEW_URL}" >> $GITHUB_ENV
+          echo "Verify preview_url was set:"
+          echo "GITHUB_OUTPUT contents:"
+          cat $GITHUB_OUTPUT
+
+      - name: Verify Preview URL
+        run: |
+          echo "Preview URL from env: $PREVIEW_URL"
+          echo "Preview URL from output: ${{ steps.deploy.outputs.preview_url }}"
 
       - name: Comment PR with Preview URL
         uses: actions/github-script@v7

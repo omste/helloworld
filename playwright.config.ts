@@ -1,12 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+import dotenv from 'dotenv';
 
-/**
- * Read environment variables from file.
- * https://github.com/motdotla/dotenv
- */
-// import dotenv from 'dotenv';
-// import path from 'path';
-// dotenv.config({ path: path.resolve(__dirname, '.env') });
+// ESM equivalent of __dirname
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Load environment variables from .env file
+dotenv.config({ path: resolve(__dirname, '.env') });
 
 const PWT_TARGET_URL = process.env.PLAYWRIGHT_TARGET_URL;
 const PORT = process.env.PORT || 3000;
@@ -75,11 +76,9 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests, only if PWT_TARGET_URL is not set */
   webServer: PWT_TARGET_URL ? undefined : {
-    command: `PORT=${PORT} NODE_ENV=test pnpm dev`,
+    command: `pnpm dev`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
-    stdout: 'pipe',
-    stderr: 'pipe',
   },
 });

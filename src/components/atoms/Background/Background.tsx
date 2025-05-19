@@ -14,9 +14,10 @@ export const Background: FC<BackgroundProps> = ({ imageSrc, alt }) => {
         alt={alt}
         fill
         priority
-        quality={100}
+        quality={75}
         className="object-cover"
-        sizes="100vw"
+        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 100vw"
+        loading="eager"
       />
       <div className="absolute inset-0 bg-black/30" /> {/* Overlay for better text readability */}
     </div>

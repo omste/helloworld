@@ -3,8 +3,12 @@ import { test, expect } from '@playwright/test';
 test('homepage displays welcome message', async ({ page }) => {
   await page.goto('/');
 
-  // Check for the welcome message
-  await expect(page.locator('text="Hello, world!"')).toBeVisible();
+  // Wait for tRPC query to complete and message to be displayed
+  const contentBox = await page.waitForSelector('div.p-8.rounded-3xl');
+  const message = await contentBox.textContent();
+  
+  // Verify the exact message from our test database
+  expect(message).toBe('Hello, World from E2E test!');
 
   // Check for the main container structure
   await expect(page.locator('div.flex.min-h-screen')).toBeVisible();

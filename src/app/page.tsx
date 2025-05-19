@@ -4,6 +4,10 @@ import { ErrorBoundary } from "@/components/atoms/ErrorBoundary/ErrorBoundary";
 import { ImageService } from "@/services/ImageService";
 import { MessageService } from "@/services/MessageService";
 
+// Make this page dynamic
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function Home() {
   const imageService = ImageService.getInstance();
   const messageService = MessageService.getInstance();

@@ -6,7 +6,6 @@ node_modules
 .pnp.js
 
 # testing
-coverage
 .nyc_output
 playwright-report
 test-results
@@ -23,6 +22,7 @@ dist
 # misc
 .DS_Store
 *.pem
+.swc/*
 
 # debug
 npm-debug.log*

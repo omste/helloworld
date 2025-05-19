@@ -44,7 +44,16 @@ export class MessageService {
     return MessageService.instance;
   }
 
+  private isBuildTime() {
+    return process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE === 'build';
+  }
+
   public async getWelcomeMessage(): Promise<MessageResponse> {
+    if (this.isBuildTime()) {
+      console.log('🏗️ Build time detected, skipping tRPC request');
+      return { text: 'Loading...' };
+    }
+
     console.log('📤 Calling tRPC greeting procedure...');
     const result = await this.trpc.greeting.query();
     console.log('📥 tRPC response:', result);
@@ -54,10 +63,18 @@ export class MessageService {
   }
 
   public async addMessage(text: string): Promise<void> {
+    if (this.isBuildTime()) {
+      console.log('🏗️ Build time detected, skipping tRPC mutation');
+      return;
+    }
     await this.trpc.addMessage.mutate({ text });
   }
 
   public async getMessages(): Promise<Message[]> {
+    if (this.isBuildTime()) {
+      console.log('🏗️ Build time detected, skipping tRPC query');
+      return [];
+    }
     return await this.trpc.getMessages.query();
   }
 

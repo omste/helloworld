@@ -3,13 +3,18 @@ import { neon } from '@neondatabase/serverless';
 import * as schema from '../db/schema';
 import { FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch';
 
-// Initialize database connection
-if (!process.env.DATABASE_URL) {
+// During build time, don't initialize the database
+const isBuildTime = process.env.NODE_ENV === 'production' && typeof window === 'undefined';
+
+// Only check for DATABASE_URL when we're actually going to use it
+if (!isBuildTime && !process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL environment variable is not set');
 }
 
-const sql = neon(process.env.DATABASE_URL);
-const db = drizzle(sql, { schema });
+// Skip database initialization during build time
+const db = isBuildTime ? 
+  null as any : // During build time, just return null (will never be used)
+  drizzle(neon(process.env.DATABASE_URL!), { schema });
 
 export interface Context {
   db: typeof db;

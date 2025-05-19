@@ -164,7 +164,7 @@ jobs:
             --platform managed \
             --quiet \
             --allow-unauthenticated \
-            --set-env-vars=NODE_ENV=production \
+            --set-env-vars NODE_ENV=production \
             --min-instances=1 \
             --format='get(status.url)')
           echo "service_url=$SERVICE_URL" >> $GITHUB_OUTPUT

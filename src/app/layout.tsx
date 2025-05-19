@@ -1,7 +1,6 @@
 import { ErrorBoundary } from '@/components/atoms/ErrorBoundary/ErrorBoundary';
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ImageService } from "@/services/ImageService";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,18 +28,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const imageService = ImageService.getInstance();
-  const backgroundImage = imageService.getBackgroundImage();
-
   return (
     <html lang="en">
-      <head>
-        <link
-          rel="preload"
-          href={backgroundImage.imageSrc}
-          as="image"
-        />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

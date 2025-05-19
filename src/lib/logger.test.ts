@@ -1,6 +1,13 @@
 import { Logger } from './logger';
 import pino from 'pino';
 
+type MockPinoLogger = {
+  info: jest.Mock;
+  error: jest.Mock;
+  warn: jest.Mock;
+  debug: jest.Mock;
+};
+
 jest.mock('pino', () => {
   const mockPino = {
     info: jest.fn(),
@@ -13,14 +20,14 @@ jest.mock('pino', () => {
 
 describe('Logger', () => {
   let logger: Logger;
-  let mockPinoLogger: ReturnType<typeof pino>;
+  let mockPinoLogger: MockPinoLogger;
 
   beforeEach(() => {
     // Reset the singleton instance before each test
-    // @ts-ignore - accessing private property for testing
+    // @ts-expect-error - accessing private property for testing
     Logger.instance = undefined;
     logger = Logger.getInstance();
-    mockPinoLogger = (pino as jest.Mock)();
+    mockPinoLogger = (pino as unknown as jest.Mock<MockPinoLogger>)();
   });
 
   afterEach(() => {

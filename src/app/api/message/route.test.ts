@@ -1,33 +1,39 @@
 import { GET } from './route';
 import { MessageService } from '@/services/MessageService';
-import { AppError, ServiceError } from '@/lib/errors';
+import { AppError } from '@/lib/errors';
 import { Logger } from '@/lib/logger';
+import type { Message } from '@/services/MessageService';
 
 // Mock dependencies
 jest.mock('@/services/MessageService');
 jest.mock('@/lib/logger');
 
 describe('Message API Route', () => {
-  let mockGetInstance: jest.SpyInstance;
-  let mockGetWelcomeMessage: jest.Mock;
-  let mockLoggerGetInstance: jest.SpyInstance;
+  let mockGetWelcomeMessage: jest.Mock<Message>;
   let mockLoggerInfo: jest.Mock;
   let mockLoggerError: jest.Mock;
+  let mockLoggerWarn: jest.Mock;
+  let mockLoggerDebug: jest.Mock;
 
   beforeEach(() => {
     // Setup MessageService mocks
     mockGetWelcomeMessage = jest.fn();
-    mockGetInstance = jest.spyOn(MessageService, 'getInstance').mockReturnValue({
+    jest.spyOn(MessageService, 'getInstance').mockReturnValue({
       getWelcomeMessage: mockGetWelcomeMessage
-    } as any);
+    } as MessageService);
 
     // Setup Logger mocks
     mockLoggerInfo = jest.fn();
     mockLoggerError = jest.fn();
-    mockLoggerGetInstance = jest.spyOn(Logger, 'getInstance').mockReturnValue({
+    mockLoggerWarn = jest.fn();
+    mockLoggerDebug = jest.fn();
+    const mockLogger = {
       info: mockLoggerInfo,
-      error: mockLoggerError
-    } as any);
+      error: mockLoggerError,
+      warn: mockLoggerWarn,
+      debug: mockLoggerDebug,
+    };
+    jest.spyOn(Logger, 'getInstance').mockReturnValue(mockLogger as unknown as Logger);
   });
 
   afterEach(() => {
@@ -48,7 +54,7 @@ describe('Message API Route', () => {
   });
 
   it('should handle AppError correctly', async () => {
-    const error = new AppError('Custom error', 418);
+    const error = new AppError('Custom error', '418');
     mockGetWelcomeMessage.mockImplementation(() => {
       throw error;
     });

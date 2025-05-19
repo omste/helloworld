@@ -16,10 +16,32 @@ export class MessageService {
   private trpc: ReturnType<typeof createTRPCProxyClient<AppRouter>>;
 
   private constructor() {
+    const getBaseUrl = () => {
+      // Check if we're in a build/SSG environment
+      const isBuild = process.env.NODE_ENV === 'production' && typeof window === 'undefined';
+      
+      if (isBuild) {
+        // During build time, return a dummy URL as we'll use fallback data
+        return 'http://localhost:3000';
+      }
+
+      // Browser should use relative URL
+      if (typeof window !== 'undefined') {
+        return '';
+      }
+
+      // Server-side runtime (not build time) should use environment variables
+      if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}`;
+      }
+      
+      return `http://localhost:${process.env.PORT ?? 3000}`;
+    };
+
     this.trpc = createTRPCProxyClient<AppRouter>({
       links: [
         httpBatchLink({
-          url: '/api/trpc',
+          url: `${getBaseUrl()}/api/trpc`,
           transformer: superjson,
         }),
       ],
@@ -34,10 +56,24 @@ export class MessageService {
   }
 
   public async getWelcomeMessage(): Promise<Message> {
-    const result = await this.trpc.greeting.query();
-    return {
-      content: result.text
-    };
+    // During build/SSG, return fallback content immediately
+    if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
+      return {
+        content: 'Welcome to our application!'
+      };
+    }
+
+    try {
+      const result = await this.trpc.greeting.query();
+      return {
+        content: result.text
+      };
+    } catch (error) {
+      console.error('Failed to get welcome message:', error);
+      return {
+        content: 'Welcome to our application!'
+      };
+    }
   }
 
   public async addMessage(text: string): Promise<void> {
@@ -45,7 +81,17 @@ export class MessageService {
   }
 
   public async getMessages(): Promise<DatabaseMessage[]> {
-    return await this.trpc.getMessages.query();
+    // During build/SSG, return empty array
+    if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
+      return [];
+    }
+
+    try {
+      return await this.trpc.getMessages.query();
+    } catch (error) {
+      console.error('Failed to get messages:', error);
+      return [];
+    }
   }
 
   // Extensible for future features like:

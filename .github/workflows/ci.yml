@@ -10,6 +10,8 @@ on:
 env:
   REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/helloworld-docker-repo
   IMAGE_NAME: nextjs-app
+  UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+  UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
 
 jobs:
   test:
@@ -164,7 +166,7 @@ jobs:
             --platform managed \
             --quiet \
             --allow-unauthenticated \
-            --set-env-vars NODE_ENV=production \
+            --set-env-vars="NODE_ENV=production,UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }},UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" \
             --min-instances=1 \
             --format='get(status.url)')
           echo "service_url=$SERVICE_URL" >> $GITHUB_OUTPUT

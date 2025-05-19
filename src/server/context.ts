@@ -1,24 +1,29 @@
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
-import * as schema from '@/db/schema'; // Import your schema
+import * as schema from '../db/schema';
+import { FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch';
 
-// Ensure DATABASE_URL is available. For server-side, it should be directly accessible.
+// Initialize database connection
 if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL environment variable is not set for Drizzle client');
+  throw new Error('DATABASE_URL environment variable is not set');
 }
 
-const sql = neon(process.env.DATABASE_URL!);
+const sql = neon(process.env.DATABASE_URL);
 const db = drizzle(sql, { schema });
 
-/**
- * Creates context.
- * In a Server Action, you might call this with custom arguments like an IP address.
- */
-export async function createContext(opts?: { ip?: string }) {
-  return {
-    db,
-    ip: opts?.ip ?? '127.0.0.1', // Fallback IP, be mindful of this for rate limiting
-  };
+export interface Context {
+  db: typeof db;
+  ip: string;
 }
 
-export type Context = Awaited<ReturnType<typeof createContext>>; 
+export const createContext = async (opts?: FetchCreateContextFnOptions) => {
+  // Get IP from request headers or fallback to localhost
+  const ip = opts?.req.headers.get('x-forwarded-for') ?? 
+             opts?.req.headers.get('x-real-ip') ?? 
+             '127.0.0.1';
+
+  return {
+    db,
+    ip: typeof ip === 'string' ? ip : '127.0.0.1',
+  };
+}; 

@@ -36,7 +36,7 @@ export class MessageService {
       if (process.env.K_SERVICE) {
         const region = process.env.CLOUD_RUN_REGION || 'us-central1';
         const projectId = process.env.GCP_PROJECT_ID;
-        return `https://${process.env.K_SERVICE}-${projectId}.run.app`;
+        return `https://${process.env.K_SERVICE}-${projectId}.${region}.run.app`;
       }
       
       return `http://localhost:${process.env.PORT ?? 3000}`;

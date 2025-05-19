@@ -55,12 +55,10 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: pnpm test:unit
 
-  preview_deploy:
-    name: Preview Deployment
+  preview_and_e2e:
+    name: Preview Deployment & E2E Tests
     needs: lint_and_test
     runs-on: ubuntu-latest
-    outputs:
-      preview_url: ${{ steps.url_output.outputs.preview_url }}
     
     permissions:
       contents: 'read'
@@ -116,24 +114,23 @@ jobs:
             NEXT_TELEMETRY_DISABLED=1
             DATABASE_URL=${{ secrets.DATABASE_URL }}
 
-      - name: Deploy Preview to Cloud Run
+      - name: Deploy Preview and Get URL
         id: deploy
         run: |
+          # Deploy and capture URL
           PREVIEW_URL=$(gcloud run deploy ${{ steps.preview_name.outputs.preview_name }} \
             --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:pr-${{ github.event.number }} \
             --region ${{ secrets.CLOUD_RUN_REGION }} \
             --platform managed \
             --quiet \
             --allow-unauthenticated \
-            --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }},UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }}" \
+            --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},UPSTASH_REDIS_REST_URL=${{ secrets.UPSTASH_REDIS_REST_URL }},UPSTASH_REDIS_REST_TOKEN=${{ secrets.UPSTASH_REDIS_REST_TOKEN }},K_SERVICE_URL=$(gcloud run services describe ${{ steps.preview_name.outputs.preview_name }} --region ${{ secrets.CLOUD_RUN_REGION }} --format='get(status.url)')" \
             --tag pr-${{ github.event.number }} \
             --format='get(status.url)')
-          echo "PREVIEW_URL=${PREVIEW_URL}" >> $GITHUB_ENV
 
-      - name: Set safe preview URL output
-        id: url_output
-        run: |
-          echo "preview_url=${PREVIEW_URL}" >> $GITHUB_OUTPUT
+          # Store URL for later steps
+          echo "PREVIEW_URL=${PREVIEW_URL}" >> $GITHUB_ENV
+          echo "Preview URL: ${PREVIEW_URL}"
 
       - name: Comment PR with Preview URL
         uses: actions/github-script@v7
@@ -169,15 +166,6 @@ jobs:
               });
             }
 
-  e2e_tests:
-    name: E2E Tests
-    needs: preview_deploy
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -194,11 +182,28 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm playwright install --with-deps
 
-      - name: Run E2E tests against preview
+      - name: Run E2E tests
         env:
-          PLAYWRIGHT_TEST_BASE_URL: ${{ needs.preview_deploy.outputs.preview_url }}
+          PLAYWRIGHT_TEST_BASE_URL: ${{ env.PREVIEW_URL }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: pnpm test:e2e
+        run: |
+          echo "Running E2E tests against preview deployment: $PLAYWRIGHT_TEST_BASE_URL"
+          
+          # Wait for preview to be ready
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          until curl -s -o /dev/null -w "%{http_code}" "$PLAYWRIGHT_TEST_BASE_URL" | grep -q "200\|301\|302"; do
+            if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+              echo "Failed to verify preview deployment after $MAX_RETRIES attempts"
+              exit 1
+            fi
+            echo "Waiting for preview to be ready..."
+            sleep 10
+            RETRY_COUNT=$((RETRY_COUNT+1))
+          done
+          
+          echo "✅ Preview is ready at $PLAYWRIGHT_TEST_BASE_URL"
+          pnpm test:e2e
 
       - name: Upload test results
         if: always()

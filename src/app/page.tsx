@@ -3,7 +3,10 @@ import { ContentBox } from "@/components/molecules/ContentBox/ContentBox";
 import { ErrorBoundary } from "@/components/atoms/ErrorBoundary/ErrorBoundary";
 import { ImageService } from "@/services/ImageService";
 import { MessageService } from "@/services/MessageService";
-import { TRPCClientError } from '@trpc/client';
+
+// Make this page dynamic
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function Home() {
   const imageService = ImageService.getInstance();
@@ -13,14 +16,12 @@ export default async function Home() {
   let welcomeMessage;
   
   try {
+    console.log('🎯 Page component: Fetching welcome message...');
     welcomeMessage = await messageService.getWelcomeMessage();
+    console.log('✨ Page component: Received message:', welcomeMessage);
   } catch (error) {
-    // During build time, we'll use a default message
-    if (process.env.NODE_ENV === 'production' && error instanceof TRPCClientError) {
-      welcomeMessage = { text: 'Welcome to our application!' };
-    } else {
-      throw error;
-    }
+    console.error('❌ Page component: Error fetching message:', error);
+    throw error; // Let the error boundary handle it
   }
 
   return (

@@ -27,12 +27,12 @@ const mockRateLimiter = {
 
 // Only check environment variables if not in build time
 if (!isBuildTime) {
-  if (!process.env.UPSTASH_REDIS_REST_URL) {
-    throw new Error('UPSTASH_REDIS_REST_URL is not set');
-  }
-  if (!process.env.UPSTASH_REDIS_REST_TOKEN) {
-    throw new Error('UPSTASH_REDIS_REST_TOKEN is not set');
-  }
+if (!process.env.UPSTASH_REDIS_REST_URL) {
+  throw new Error('UPSTASH_REDIS_REST_URL is not set');
+}
+if (!process.env.UPSTASH_REDIS_REST_TOKEN) {
+  throw new Error('UPSTASH_REDIS_REST_TOKEN is not set');
+}
 }
 
 // Function to ensure URL is using HTTPS

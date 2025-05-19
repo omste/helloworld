@@ -9,7 +9,18 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Load environment variables from .env file
 dotenv.config({ path: resolve(__dirname, '.env') });
 
-const PWT_TARGET_URL = process.env.PLAYWRIGHT_TARGET_URL;
+const PWT_TARGET_URL = process.env.PLAYWRIGHT_TEST_BASE_URL;
+
+// In CI, we must have a target URL and it must be a Cloud Run URL
+if (process.env.CI) {
+  if (!PWT_TARGET_URL) {
+    throw new Error('PLAYWRIGHT_TEST_BASE_URL must be set in CI environment');
+  }
+  if (!PWT_TARGET_URL.includes('run.app')) {
+    throw new Error('PLAYWRIGHT_TEST_BASE_URL must be a Cloud Run URL in CI environment');
+  }
+}
+
 const PORT = process.env.PORT || 3000;
 
 /**
@@ -26,7 +37,7 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: process.env.CI ? 'github' : 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -74,11 +85,11 @@ export default defineConfig({
     // },
   ],
 
-  /* Run your local dev server before starting the tests, only if PWT_TARGET_URL is not set */
-  webServer: PWT_TARGET_URL ? undefined : {
+  /* Only start a local dev server for local development, never in CI */
+  webServer: (!process.env.CI && !PWT_TARGET_URL) ? {
     command: `pnpm dev`,
     url: `http://127.0.0.1:${PORT}`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     timeout: 120 * 1000,
-  },
+  } : undefined,
 });

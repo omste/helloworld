@@ -5,35 +5,36 @@ import { FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch';
 import { TRPCError } from '@trpc/server';
 
 // Create a type for our database instance
-type DrizzleDB = ReturnType<typeof createDrizzleInstance>;
-
-function createDrizzleInstance() {
-  if (!process.env.DATABASE_URL) {
-    throw new TRPCError({
-      code: 'INTERNAL_SERVER_ERROR',
-      message: 'Database configuration is missing',
-    });
-  }
-  return drizzle(neon(process.env.DATABASE_URL), { schema });
-}
+type DrizzleDB = ReturnType<typeof drizzle<typeof schema>>;
 
 // Initialize database connection lazily
 let dbInstance: DrizzleDB | null = null;
 
 function getDB(): DrizzleDB {
-  // During SSG/ISR build, database operations are not needed
-  if (process.env.NODE_ENV === 'production' && typeof window === 'undefined') {
+  try {
+    if (!process.env.DATABASE_URL) {
+      console.error('❌ Database URL is missing');
+      throw new TRPCError({
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'Database configuration is missing',
+      });
+    }
+
+    if (!dbInstance) {
+      console.log('📦 Creating new database instance...');
+      dbInstance = drizzle(neon(process.env.DATABASE_URL), { schema });
+      console.log('✅ Database instance created');
+    }
+
+    return dbInstance;
+  } catch (error) {
+    console.error('❌ Failed to initialize database:', error);
     throw new TRPCError({
-      code: 'NOT_IMPLEMENTED',
-      message: 'Database operations are not available during build time',
+      code: 'INTERNAL_SERVER_ERROR',
+      message: 'Failed to initialize database connection',
+      cause: error,
     });
   }
-
-  if (!dbInstance) {
-    dbInstance = createDrizzleInstance();
-  }
-
-  return dbInstance;
 }
 
 export interface Context {
@@ -42,13 +43,21 @@ export interface Context {
 }
 
 export const createContext = async (opts?: FetchCreateContextFnOptions): Promise<Context> => {
-  // Get IP from request headers or fallback to localhost
-  const ip = opts?.req.headers.get('x-forwarded-for') ?? 
-             opts?.req.headers.get('x-real-ip') ?? 
-             '127.0.0.1';
+  try {
+    const ip = opts?.req.headers.get('x-forwarded-for') ?? 
+               opts?.req.headers.get('x-real-ip') ?? 
+               '127.0.0.1';
 
-  return {
-    db: getDB(),
-    ip: typeof ip === 'string' ? ip : '127.0.0.1',
-  };
+    console.log('🔄 Creating context with IP:', ip);
+    const db = getDB();
+    console.log('✅ Context created successfully');
+
+    return {
+      db,
+      ip: typeof ip === 'string' ? ip : '127.0.0.1',
+    };
+  } catch (error) {
+    console.error('❌ Failed to create context:', error);
+    throw error; // Re-throw to be handled by tRPC error formatter
+  }
 }; 

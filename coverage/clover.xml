@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1747689511284" clover="3.2.0">
+  <project timestamp="1747689511284" name="All files">
+    <metrics statements="105" coveredstatements="92" conditionals="42" coveredconditionals="30" methods="36" coveredmethods="31" elements="183" coveredelements="153" complexity="0" loc="105" ncloc="105" packages="10" files="12" classes="12"/>
+    <package name="app.api.message">
+      <metrics statements="17" coveredstatements="17" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
+      <file name="route.ts" path="/Users/admin/om/helloworld/src/app/api/message/route.ts">
+        <metrics statements="17" coveredstatements="17" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="6" count="1" type="stmt"/>
+        <line num="8" count="4" type="stmt"/>
+        <line num="9" count="4" type="stmt"/>
+        <line num="10" count="4" type="stmt"/>
+        <line num="12" count="4" type="stmt"/>
+        <line num="13" count="4" type="stmt"/>
+        <line num="15" count="1" type="stmt"/>
+        <line num="16" count="1" type="stmt"/>
+        <line num="18" count="3" type="stmt"/>
+        <line num="20" count="3" type="cond" truecount="1" falsecount="0"/>
+        <line num="21" count="1" type="stmt"/>
+        <line num="27" count="2" type="stmt"/>
+        <line num="28" count="2" type="stmt"/>
+      </file>
+    </package>
+    <package name="components">
+      <metrics statements="3" coveredstatements="3" conditionals="2" coveredconditionals="2" methods="1" coveredmethods="1"/>
+      <file name="Greeting.tsx" path="/Users/admin/om/helloworld/src/components/Greeting.tsx">
+        <metrics statements="3" coveredstatements="3" conditionals="2" coveredconditionals="2" methods="1" coveredmethods="1"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="7" count="1" type="stmt"/>
+        <line num="15" count="3" type="stmt"/>
+      </file>
+    </package>
+    <package name="components.atoms.Background">
+      <metrics statements="2" coveredstatements="2" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
+      <file name="Background.tsx" path="/Users/admin/om/helloworld/src/components/atoms/Background/Background.tsx">
+        <metrics statements="2" coveredstatements="2" conditionals="0" coveredconditionals="0" methods="1" coveredmethods="1"/>
+        <line num="1" count="1" type="stmt"/>
+        <line num="9" count="2" type="stmt"/>
+      </file>
+    </package>
+    <package name="components.atoms.Box">
+      <metrics statements="1" coveredstatements="1" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
+      <file name="Box.tsx" path="/Users/admin/om/helloworld/src/components/atoms/Box/Box.tsx">
+        <metrics statements="1" coveredstatements="1" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
+        <line num="8" count="19" type="cond" truecount="1" falsecount="0"/>
+      </file>
+    </package>
+    <package name="components.atoms.ErrorBoundary">
+      <metrics statements="12" coveredstatements="11" conditionals="4" coveredconditionals="4" methods="5" coveredmethods="4"/>
+      <file name="ErrorBoundary.tsx" path="/Users/admin/om/helloworld/src/components/atoms/ErrorBoundary/ErrorBoundary.tsx">
+        <metrics statements="9" coveredstatements="8" conditionals="1" coveredconditionals="1" methods="4" coveredmethods="3"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="4" count="1" type="stmt"/>
+        <line num="5" count="1" type="stmt"/>
+        <line num="16" count="4" type="stmt"/>
+        <line num="23" count="2" type="stmt"/>
+        <line num="27" count="1" type="stmt"/>
+        <line num="38" count="0" type="stmt"/>
+        <line num="42" count="5" type="cond" truecount="1" falsecount="0"/>
+        <line num="51" count="3" type="stmt"/>
+      </file>
+      <file name="ErrorFallback.tsx" path="/Users/admin/om/helloworld/src/components/atoms/ErrorBoundary/ErrorFallback.tsx">
+        <metrics statements="3" coveredstatements="3" conditionals="3" coveredconditionals="3" methods="1" coveredmethods="1"/>
+        <line num="4" count="2" type="stmt"/>
+        <line num="5" count="2" type="stmt"/>
+        <line num="12" count="7" type="stmt"/>
+      </file>
+    </package>
+    <package name="components.atoms.Text">
+      <metrics statements="1" coveredstatements="1" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
+      <file name="Text.tsx" path="/Users/admin/om/helloworld/src/components/atoms/Text/Text.tsx">
+        <metrics statements="1" coveredstatements="1" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
+        <line num="8" count="19" type="cond" truecount="1" falsecount="0"/>
+      </file>
+    </package>
+    <package name="components.molecules.ContentBox">
+      <metrics statements="3" coveredstatements="3" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
+      <file name="ContentBox.tsx" path="/Users/admin/om/helloworld/src/components/molecules/ContentBox/ContentBox.tsx">
+        <metrics statements="3" coveredstatements="3" conditionals="1" coveredconditionals="1" methods="1" coveredmethods="1"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="10" count="3" type="cond" truecount="1" falsecount="0"/>
+      </file>
+    </package>
+    <package name="components.molecules.ErrorFallback">
+      <metrics statements="3" coveredstatements="3" conditionals="3" coveredconditionals="3" methods="1" coveredmethods="1"/>
+      <file name="ErrorFallback.tsx" path="/Users/admin/om/helloworld/src/components/molecules/ErrorFallback/ErrorFallback.tsx">
+        <metrics statements="3" coveredstatements="3" conditionals="3" coveredconditionals="3" methods="1" coveredmethods="1"/>
+        <line num="2" count="1" type="stmt"/>
+        <line num="3" count="1" type="stmt"/>
+        <line num="10" count="6" type="stmt"/>
+      </file>
+    </package>
+    <package name="lib">
+      <metrics statements="33" coveredstatements="30" conditionals="17" coveredconditionals="12" methods="16" coveredmethods="13"/>
+      <file name="errors.ts" path="/Users/admin/om/helloworld/src/lib/errors.ts">
+        <metrics statements="14" coveredstatements="14" conditionals="5" coveredconditionals="5" methods="4" coveredmethods="4"/>
+        <line num="1" count="10" type="stmt"/>
+        <line num="6" count="11" type="stmt"/>
+        <line num="7" count="11" type="stmt"/>
+        <line num="8" count="11" type="stmt"/>
+        <line num="9" count="11" type="stmt"/>
+        <line num="13" count="2" type="stmt"/>
+        <line num="15" count="2" type="stmt"/>
+        <line num="16" count="2" type="stmt"/>
+        <line num="20" count="2" type="stmt"/>
+        <line num="22" count="2" type="stmt"/>
+        <line num="23" count="2" type="stmt"/>
+        <line num="27" count="4" type="stmt"/>
+        <line num="29" count="4" type="stmt"/>
+        <line num="30" count="4" type="stmt"/>
+      </file>
+      <file name="logger.ts" path="/Users/admin/om/helloworld/src/lib/logger.ts">
+        <metrics statements="19" coveredstatements="16" conditionals="12" coveredconditionals="7" methods="12" coveredmethods="9"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="3" count="20" type="stmt"/>
+        <line num="8" count="10" type="stmt"/>
+        <line num="12" count="6" type="stmt"/>
+        <line num="15" count="2" type="stmt"/>
+        <line num="20" count="12" type="cond" truecount="1" falsecount="0"/>
+        <line num="21" count="10" type="stmt"/>
+        <line num="23" count="12" type="stmt"/>
+        <line num="27" count="2" type="stmt"/>
+        <line num="31" count="3" type="cond" truecount="2" falsecount="0"/>
+        <line num="32" count="1" type="stmt"/>
+        <line num="43" count="2" type="stmt"/>
+        <line num="48" count="2" type="stmt"/>
+        <line num="52" count="2" type="stmt"/>
+        <line num="57" count="2" type="stmt"/>
+        <line num="58" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="59" count="1" type="cond" truecount="0" falsecount="1"/>
+        <line num="60" count="0" type="cond" truecount="0" falsecount="1"/>
+        <line num="61" count="0" type="cond" truecount="0" falsecount="1"/>
+      </file>
+    </package>
+    <package name="services">
+      <metrics statements="30" coveredstatements="21" conditionals="12" coveredconditionals="5" methods="8" coveredmethods="7"/>
+      <file name="MessageService.ts" path="/Users/admin/om/helloworld/src/services/MessageService.ts">
+        <metrics statements="30" coveredstatements="21" conditionals="12" coveredconditionals="5" methods="8" coveredmethods="7"/>
+        <line num="1" count="2" type="stmt"/>
+        <line num="2" count="2" type="stmt"/>
+        <line num="13" count="35" type="stmt"/>
+        <line num="18" count="13" type="stmt"/>
+        <line num="20" count="13" type="cond" truecount="1" falsecount="0"/>
+        <line num="23" count="12" type="cond" truecount="0" falsecount="1"/>
+        <line num="26" count="0" type="cond" truecount="0" falsecount="2"/>
+        <line num="30" count="12" type="cond" truecount="2" falsecount="0"/>
+        <line num="33" count="13" type="stmt"/>
+        <line num="40" count="0" type="stmt"/>
+        <line num="41" count="0" type="stmt"/>
+        <line num="49" count="21" type="cond" truecount="1" falsecount="0"/>
+        <line num="50" count="13" type="stmt"/>
+        <line num="52" count="21" type="stmt"/>
+        <line num="56" count="6" type="cond" truecount="1" falsecount="1"/>
+        <line num="60" count="2" type="cond" truecount="0" falsecount="1"/>
+        <line num="61" count="0" type="stmt"/>
+        <line num="62" count="0" type="stmt"/>
+        <line num="65" count="2" type="stmt"/>
+        <line num="66" count="2" type="stmt"/>
+        <line num="67" count="1" type="stmt"/>
+        <line num="68" count="1" type="stmt"/>
+        <line num="74" count="2" type="cond" truecount="0" falsecount="1"/>
+        <line num="75" count="0" type="stmt"/>
+        <line num="76" count="0" type="stmt"/>
+        <line num="78" count="2" type="stmt"/>
+        <line num="82" count="2" type="cond" truecount="0" falsecount="1"/>
+        <line num="83" count="0" type="stmt"/>
+        <line num="84" count="0" type="stmt"/>
+        <line num="86" count="2" type="stmt"/>
+      </file>
+    </package>
+  </project>
+</coverage>

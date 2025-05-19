@@ -9,6 +9,7 @@ import { defineConfig, devices } from '@playwright/test';
 // dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const PWT_TARGET_URL = process.env.PLAYWRIGHT_TARGET_URL;
+const PORT = process.env.PORT || 3000;
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -28,7 +29,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: PWT_TARGET_URL || 'http://127.0.0.1:3000',
+    baseURL: PWT_TARGET_URL || `http://127.0.0.1:${PORT}`,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -74,9 +75,11 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests, only if PWT_TARGET_URL is not set */
   webServer: PWT_TARGET_URL ? undefined : {
-    command: 'NODE_ENV=test pnpm dev',
-    url: 'http://127.0.0.1:3000',
+    command: `PORT=${PORT} NODE_ENV=test pnpm dev`,
+    url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000, // Increased timeout for server start
+    timeout: 120 * 1000,
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 });

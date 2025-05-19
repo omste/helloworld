@@ -1,16 +1,20 @@
 import { test, expect } from '@playwright/test';
 
-test('homepage has expected text', async ({ page }) => {
-  await page.goto('/'); // Navigate to the baseURL (root)
+test('homepage displays welcome message', async ({ page }) => {
+  await page.goto('/');
 
-  // Expect a specific text to be visible on the page.
-  // The default Next.js page contains "Get started by editing".
-  // Let's look for a more prominent element or a unique piece of text.
-  // For now, we'll use a locator that finds text containing "Get started by editing".
-  await expect(page.locator('*:has-text("Get started by editing")').first()).toBeVisible();
+  // Check for the welcome message
+  await expect(page.locator('text="Hello, world!"')).toBeVisible();
 
-  // You can also check for the title if you set one in layout.tsx
-  // await expect(page).toHaveTitle(/Create Next App/); // Default title
+  // Check for the main container structure
+  await expect(page.locator('div.flex.min-h-screen')).toBeVisible();
+
+  // Check for the content box with its actual classes
+  await expect(page.locator('div.p-8.rounded-3xl')).toBeVisible();
+  await expect(page.locator('div.border-2.border-white\\/80')).toBeVisible();
+
+  // Check for the background image
+  await expect(page.locator('img.object-cover')).toBeVisible();
 });
 
 // Removed the second test for simplicity for now

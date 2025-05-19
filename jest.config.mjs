@@ -19,9 +19,20 @@ const customJestConfig = {
   testPathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '<rootDir>/.next/',
+    '<rootDir>/e2e/',
     '<rootDir>/tests/', // Ignore Playwright's main test directory
     '<rootDir>/tests-examples/', // Ignore Playwright's example test directory
   ],
+  collectCoverage: true,
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70,
+    },
+  },
+  testMatch: ['**/*.test.ts', '**/*.test.tsx'],
   // Add more setup options before each test is run
   // setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
 };

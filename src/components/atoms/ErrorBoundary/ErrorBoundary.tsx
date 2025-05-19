@@ -1,45 +1,50 @@
+'use client';
+
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { Logger } from '@/lib/logger';
+import { log } from '@/lib/logger';
+import { ErrorFallback } from './ErrorFallback';
 
 interface Props {
   children: ReactNode;
-  fallback?: ReactNode;
 }
 
 interface State {
   hasError: boolean;
-  error?: Error;
+  error: Error | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  private logger: Logger;
+  public state: State = {
+    hasError: false,
+    error: null,
+  };
 
-  constructor(props: Props) {
-    super(props);
-    this.state = { hasError: false };
-    this.logger = Logger.getInstance();
-  }
-
-  static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    this.logger.error('Component error caught by boundary', {
-      error,
-      componentStack: errorInfo.componentStack,
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    log.error('Uncaught error:', {
+      error: {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      },
+      errorInfo,
     });
   }
 
-  render(): ReactNode {
+  private handleRetry = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  public render() {
     if (this.state.hasError) {
-      return this.props.fallback || (
-        <div className="p-8 rounded-3xl border-2 border-red-400/80 text-white">
-          <h2 className="text-xl font-medium mb-2">Something went wrong</h2>
-          <p className="text-white/80">
-            {this.state.error?.message || 'An unexpected error occurred'}
-          </p>
-        </div>
+      return (
+        <ErrorFallback
+          error={this.state.error}
+          onRetry={this.handleRetry}
+        />
       );
     }
 

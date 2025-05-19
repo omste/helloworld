@@ -3,9 +3,11 @@ import { publicProcedure, router, rateLimitedProcedure } from '../trpc';
 import { messages } from '@/db/schema';
 import { desc } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
+import { messageInputSchema, messageSchema, messageResponseSchema } from '@/lib/schemas';
 
 export const appRouter = router({
   greeting: publicProcedure
+    .output(messageResponseSchema)
     .query(async ({ ctx }) => {
       try {
         const latestMessage = await ctx.db.select().from(messages).orderBy(desc(messages.id)).limit(1);
@@ -30,7 +32,7 @@ export const appRouter = router({
     }),
 
   addMessage: rateLimitedProcedure
-    .input(z.object({ text: z.string().min(1) }))
+    .input(messageInputSchema)
     .mutation(async ({ input, ctx }) => {
       try {
         await ctx.db.insert(messages).values({ themessage: input.text });
@@ -45,6 +47,7 @@ export const appRouter = router({
     }),
 
   getMessages: publicProcedure
+    .output(z.array(messageSchema))
     .query(async ({ ctx }) => {
       try {
         const allMessages = await ctx.db.select().from(messages).orderBy(desc(messages.id));

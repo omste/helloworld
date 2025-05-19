@@ -113,7 +113,7 @@ describe('MessageService', () => {
 
       const message = await messageService.getWelcomeMessage();
       expect(message).toEqual({
-        content: mockResponse.text
+        text: mockResponse.text
       });
       // @ts-expect-error - accessing mocked property
       expect(messageService.trpc.greeting.query).toHaveBeenCalled();

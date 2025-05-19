@@ -17,7 +17,7 @@ export default async function Home() {
   } catch (error) {
     // During build time, we'll use a default message
     if (process.env.NODE_ENV === 'production' && error instanceof TRPCClientError) {
-      welcomeMessage = { content: 'Welcome to our application!' };
+      welcomeMessage = { text: 'Welcome to our application!' };
     } else {
       throw error;
     }
@@ -28,7 +28,7 @@ export default async function Home() {
       <ErrorBoundary>
         <Background {...backgroundImage} />
         <ContentBox>
-          {welcomeMessage.content}
+          {welcomeMessage.text}
         </ContentBox>
       </ErrorBoundary>
     </div>

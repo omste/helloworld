@@ -2,7 +2,7 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import * as schema from './schema';
 
-// During build time, don't initialize the database
+// Skip database during build
 const isBuildTime = process.env.NODE_ENV === 'production' && typeof window === 'undefined';
 
 // Only check for DATABASE_URL when we're actually going to use it

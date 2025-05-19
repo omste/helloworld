@@ -3,7 +3,7 @@ import { neon } from '@neondatabase/serverless';
 import * as schema from '../db/schema';
 import { FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch';
 
-// During build time, don't initialize the database
+// Skip database during build
 const isBuildTime = process.env.NODE_ENV === 'production' && typeof window === 'undefined';
 
 // Only check for DATABASE_URL when we're actually going to use it

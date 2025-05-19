@@ -47,26 +47,68 @@ The application follows a modern, type-safe data flow pattern:
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#32CD32', 'edgeLabelBackground':'#fff', 'tertiaryColor': '#fff'}}}%%
 graph LR
-    A[Server Component] --> B[tRPC Router]
-    C[Server Action] --> B
-    B --> D[Rate Limiter]
-    D --> E[Drizzle ORM]
-    E --> F[Neon PostgreSQL]
-    style A fill:#e1f5fe,stroke:#01579b
-    style B fill:#fff3e0,stroke:#ff6f00
-    style C fill:#e8f5e9,stroke:#1b5e20
-    style D fill:#fce4ec,stroke:#880e4f
-    style E fill:#f3e5f5,stroke:#4a148c
-    style F fill:#ede7f6,stroke:#311b92
+    subgraph Client
+        RSC[Server Components]
+        SA[Server Actions]
+        MS[MessageService]
+    end
+
+    subgraph "tRPC Layer"
+        TR[tRPC Router]
+        subgraph "Middleware"
+            RL[Rate Limiter]
+            ZV[Zod Validation]
+        end
+    end
+
+    subgraph "Infrastructure"
+        RD[(Upstash Redis)]
+    end
+
+    subgraph "Data Layer"
+        DO[Drizzle ORM]
+        DB[(Neon PostgreSQL)]
+    end
+
+    %% Client to tRPC connections
+    RSC --> MS
+    SA --> MS
+    MS --> TR
+
+    %% tRPC internal flow
+    TR --> RL
+    TR --> ZV
+    RL --> RD
+    RL --> DO
+    ZV --> DO
+
+    %% Data layer
+    DO --> DB
+
+    %% Styles
+    style RSC fill:#e1f5fe,stroke:#01579b
+    style SA fill:#e8f5e9,stroke:#1b5e20
+    style MS fill:#fff3e0,stroke:#ff6f00
+    style TR fill:#fce4ec,stroke:#880e4f
+    style RL fill:#f3e5f5,stroke:#4a148c
+    style ZV fill:#e8eaf6,stroke:#1a237e
+    style DO fill:#ede7f6,stroke:#311b92
+    style DB fill:#efebe9,stroke:#3e2723
+    style RD fill:#ffebee,stroke:#b71c1c
+
+    %% Subgraph styles
+    classDef subgraph-style fill:none,stroke:#666,stroke-dasharray: 5 5
+    class Client,tRPC Layer,Data Layer,Infrastructure,Middleware subgraph-style
 ```
 
 #### Flow Description
 The data flows through the following components:
 1. **Entry Points:**
-   - Server Components make direct database queries for initial page load
+   - Server Components use tRPC procedures for data fetching
    - Server Actions handle form submissions and user interactions
 2. **Processing:**
-   - Both entry points go through the tRPC Router for type-safe validation
+   - All requests go through the tRPC Router for type-safe validation
+   - Input validation is handled by Zod schemas (e.g., `messageInputSchema`, `messageResponseSchema`)
    - Requests pass through Rate Limiter to prevent abuse
 3. **Data Access:**
    - Drizzle ORM provides type-safe database operations
@@ -74,13 +116,48 @@ The data flows through the following components:
 
 ## Key Features
 
-- **Type Safety:** Ensured through tRPC and Zod, providing robust server-side logic and input validation.
+- **Type Safety:** End-to-end type safety through tRPC and Zod:
+  - Input validation using Zod schemas (e.g., `messageSchema` for database records)
+  - Runtime validation of API inputs and outputs
+  - Automatic type inference for client-side usage
 - **Error Boundaries & Component Fallbacks:** Implemented to enhance user experience and application resilience.
 - **Secrets Management:** All secrets are securely managed using GitHub Actions Encrypted Secrets.
 
 ## Deployment
 
-The application is containerized using Docker and deployed to Google Cloud Run. Cloud Run provides a serverless environment that automatically scales based on incoming traffic, eliminating the need for manual infrastructure management. This setup ensures efficient resource utilization and cost-effectiveness.
+The application is containerized using Docker and deployed to Google Cloud Run, offering several key benefits:
+
+### Google Cloud Run Features
+- **Automatic Scaling:** Scales from zero to handle traffic spikes automatically
+- **Cost Optimization:** Only pay for actual compute time used
+- **Container Security:** Automatic vulnerability scanning and secure defaults
+- **HTTPS:** Automatic SSL/TLS certificate provisioning and renewal
+- **Global Load Balancing:** Built-in CDN and global load balancing
+
+### Deployment Process
+1. **Container Build:**
+   - Multi-stage Dockerfile for optimized image size
+   - Separate build and runtime stages
+   - Production dependencies only in final image
+   
+2. **CI/CD Pipeline:**
+   - Automated builds on GitHub Actions
+   - Container vulnerability scanning
+   - Automated testing before deployment
+   - Preview environments for pull requests
+   
+3. **Infrastructure:**
+   - Workload Identity Federation for secure authentication
+   - Minimum instance count for faster cold starts
+   - Environment variables managed through Cloud Run
+   - Automatic platform updates and security patches
+
+### Preview Environments
+Each pull request gets its own isolated environment:
+- Unique URL for testing changes
+- Full production parity
+- Automatic cleanup on PR closure
+- E2E tests run against preview deployments
 
 **Deployed URL:** [HelloWorld App](https://hello.omrisuleiman.com/)
 
@@ -192,18 +269,3 @@ PORT=3000
 - `GCP_SERVICE_ACCOUNT_EMAIL`
 - `CLOUD_RUN_SERVICE_NAME`
 - `CLOUD_RUN_REGION`
-- `DATABASE_URL`
-- `UPSTASH_REDIS_REST_URL`
-- `UPSTASH_REDIS_REST_TOKEN`
-
-## Best Practices Implemented
-
-- **Containerization:** Ensures consistency across development and production environments.
-- **Serverless Deployment:** Leverages Cloud Run for automatic scaling and reduced operational overhead.
-- **Automated Testing:** Incorporates unit and end-to-end tests to catch issues early in the development cycle.
-- **Continuous Integration:** Utilizes GitHub Actions for automated building, testing, and deployment.
-- **Code Coverage Monitoring:** Integrates tools to monitor test coverage and maintain code quality.
-
-## License
-
-MIT — over-engineer responsibly.

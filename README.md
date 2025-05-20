@@ -223,6 +223,8 @@ Each pull request gets its own isolated environment:
 
 ## CI/CD Pipeline
 
+*PLEASE NOTE : ALL SECRETS REMOVED FROM THIS PUBLIC REPO, so pushing and forking won't trigger any of the Github Actions*
+
 GitHub Actions orchestrates the continuous integration and deployment processes:
 
 - **Build:** Compiles the application and constructs the Docker image.

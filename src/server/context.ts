@@ -13,7 +13,7 @@ let dbInstance: DrizzleDB | null = null;
 function getDB(): DrizzleDB {
   try {
     if (!process.env.DATABASE_URL) {
-      console.error('❌ Database URL is missing');
+      console.error('Database URL is missing');
       throw new TRPCError({
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Database configuration is missing',
@@ -21,14 +21,14 @@ function getDB(): DrizzleDB {
     }
 
     if (!dbInstance) {
-      console.log('📦 Creating new database instance...');
+      console.log('Creating new database instance...');
       dbInstance = drizzle(neon(process.env.DATABASE_URL), { schema });
-      console.log('✅ Database instance created');
+      console.log('Database instance created');
     }
 
     return dbInstance;
   } catch (error) {
-    console.error('❌ Failed to initialize database:', error);
+    console.error('Failed to initialize database:', error);
     throw new TRPCError({
       code: 'INTERNAL_SERVER_ERROR',
       message: 'Failed to initialize database connection',
@@ -48,16 +48,16 @@ export const createContext = async (opts?: FetchCreateContextFnOptions): Promise
                opts?.req.headers.get('x-real-ip') ?? 
                '127.0.0.1';
 
-    console.log('🔄 Creating context with IP:', ip);
+    console.log('Creating context with IP:', ip);
     const db = getDB();
-    console.log('✅ Context created successfully');
+    console.log('Context created successfully');
 
     return {
       db,
       ip: typeof ip === 'string' ? ip : '127.0.0.1',
     };
   } catch (error) {
-    console.error('❌ Failed to create context:', error);
+    console.error('Failed to create context:', error);
     throw error; // Re-throw to be handled by tRPC error formatter
   }
 }; 

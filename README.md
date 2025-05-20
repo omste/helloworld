@@ -119,7 +119,7 @@ The data flows through the following components:
    - External services (Redis, PostgreSQL) handle persistence
    - All runs serverless on Google Cloud Run
 
-## Key Features
+## Features
 
 - **Type Safety:** End-to-end type safety through tRPC and Zod:
   - Input validation using Zod schemas (`messageSchema` for database records)
@@ -130,31 +130,39 @@ The data flows through the following components:
 
 ## Service Architecture
 
-The application implements a service layer pattern:
+The application implements a functional service pattern:
 
-### Singleton Services
-All services (`MessageService`, `ImageService`, `Logger`) are implemented as singletons to ensure:
-- Single source of truth
-- Efficient resource use
-- Consistent behavior
+### Service Factory Pattern
+Services (`MessageService`, `ImageService`) are implemented using a factory pattern to ensure:
+- Clean separation of concerns
+- Immutable state
+- Functional composition
+- Easy testing through dependency injection
 
 Example implementation:
 ```typescript
-export class MessageService {
-  private static instance: MessageService;
-  private trpc: ReturnType<typeof createTRPCProxyClient<AppRouter>>;
+// Factory function to create a message service
+export const createMessageService = () => {
+  const trpc = createTrpcClient();
 
-  private constructor() {
-    // Private initialization logic
-  }
+  const getWelcomeMessage = async (): Promise<MessageResponse> => {
+    // Implementation
+  };
 
-  public static getInstance(): MessageService {
-    if (!MessageService.instance) {
-      MessageService.instance = new MessageService();
-    }
-    return MessageService.instance;
-  }
-}
+  const addMessage = async (text: string): Promise<void> => {
+    // Implementation
+  };
+
+  const getMessages = async (): Promise<Message[]> => {
+    // Implementation
+  };
+
+  return {
+    getWelcomeMessage,
+    addMessage,
+    getMessages,
+  };
+};
 ```
 
 ### Service Responsibilities
@@ -162,27 +170,6 @@ export class MessageService {
 - **ImageService:** Manages image assets and metadata
 - **Logger:** Provides centralized logging with structured output
 
-### Benefits of the Service Layer
-1. **Separation of Concerns:**
-   - Business logic is isolated from UI components
-   - Each service has a single, well-defined responsibility
-   - Easy to test with mock implementations
-
-2. **Environment Awareness:**
-   - Services adapt behavior based on runtime environment
-   - Different configurations for browser/server/preview
-   - Graceful fallbacks for build-time execution
-
-3. **Error Handling:**
-   - Basic error class hierarchy with `AppError` as base
-   - HTTP status code mapping through error classes
-   - React Error Boundaries for UI resilience
-   - Structured error logging via Pino
-
-4. **Extensibility:**
-   - New features can be added by extending existing services
-   - Clear patterns for adding new services
-   - Easy to implement A/B testing
 
 ## Deployment
 
@@ -322,7 +309,7 @@ PORT=3000
        --member="principalSet://iam.googleapis.com/projects/YOUR_GCP_PROJECT_NUMBER/locations/global/workloadIdentityPools/YOUR_POOL_ID/attribute.repository/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME"
    ```
 
-### Required GitHub Secrets
+### Required GitHub Actions Secrets
 
 - `GCP_PROJECT_ID`
 - `GCP_PROJECT_NUMBER`
@@ -335,14 +322,6 @@ PORT=3000
 - `UPSTASH_REDIS_REST_URL`
 - `UPSTASH_REDIS_REST_TOKEN`
 
-## Best Practices Implemented
 
-- **Containerization:** Ensures consistency across development and production environments.
-- **Serverless Deployment:** Leverages Cloud Run for automatic scaling and reduced operational overhead.
-- **Automated Testing:** Incorporates unit and end-to-end tests to catch issues early in the development cycle.
-- **Continuous Integration:** Utilizes GitHub Actions for automated building, testing, and deployment.
-- **Code Coverage Monitoring:** Integrates tools to monitor test coverage and maintain code quality.
-
-## License
-
-MIT — over-engineer responsibly.
+## UnLicensed
+Like all the best venues :)

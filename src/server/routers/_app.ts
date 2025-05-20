@@ -17,10 +17,6 @@ export const appRouter = router({
         });
       }
 
-      // First, let's see all messages in the database
-      const allMessages = await ctx.db.select().from(messages);
-      //console.log('All messages in database:', allMessages);
-
       const latestMessage = await ctx.db.select().from(messages).orderBy(desc(messages.id)).limit(1);
       //console.log('Latest message:', latestMessage);
       

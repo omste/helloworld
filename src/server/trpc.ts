@@ -10,7 +10,7 @@ import { rateLimiter } from '@/lib/redis'; // Import our rate limiter
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
-    console.error('❌ tRPC error:', error);
+    console.error('tRPC error:', error);
     return {
       ...shape,
       data: {
@@ -36,7 +36,7 @@ const rateLimitMiddleware = t.middleware(async ({ ctx, next }) => {
   const identifier = ctx.ip; 
 
   if (typeof identifier !== 'string') {
-    console.error('❌ Invalid rate limit identifier');
+    console.error('Invalid rate limit identifier');
     // Should not happen if context is always populated with a string IP
     throw new TRPCError({
       code: 'INTERNAL_SERVER_ERROR',
@@ -60,7 +60,7 @@ const rateLimitMiddleware = t.middleware(async ({ ctx, next }) => {
   } catch (error) {
     if (error instanceof TRPCError) throw error;
     
-    console.error('❌ Rate limiter error:', error);
+    console.error('Rate limiter error:', error);
     throw new TRPCError({
       code: 'INTERNAL_SERVER_ERROR',
       message: 'Rate limiting service unavailable',

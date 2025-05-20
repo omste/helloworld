@@ -1,26 +1,21 @@
 import { Background } from "@/components/atoms/Background/Background";
 import { ContentBox } from "@/components/molecules/ContentBox/ContentBox";
 import { ErrorBoundary } from "@/components/atoms/ErrorBoundary/ErrorBoundary";
-import { ImageService } from "@/services/ImageService";
-import { MessageService } from "@/services/MessageService";
+import { getBackgroundImage } from "@/services/ImageService";
+import { createMessageService } from "@/services/MessageService";
 
 // Make this page dynamic
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function Home() {
-  const imageService = ImageService.getInstance();
-  const messageService = MessageService.getInstance();
-  
-  const backgroundImage = imageService.getBackgroundImage();
+  const messageService = createMessageService();
+  const backgroundImage = getBackgroundImage();
   let welcomeMessage;
   
   try {
-    console.log('🎯 Page component: Fetching welcome message...');
     welcomeMessage = await messageService.getWelcomeMessage();
-    console.log('✨ Page component: Received message:', welcomeMessage);
   } catch (error) {
-    console.error('❌ Page component: Error fetching message:', error);
     throw error; // Let the error boundary handle it
   }
 

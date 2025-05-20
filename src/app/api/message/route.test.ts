@@ -1,11 +1,14 @@
 import { GET } from './route';
-import { MessageService } from '@/services/MessageService';
+import { createMessageService } from '@/services/MessageService';
 import { AppError } from '@/lib/errors';
 import { Logger } from '@/lib/logger';
-import type { Message } from '@/services/MessageService';
+import type { MessageResponse } from '@/services/MessageService';
 
 // Mock dependencies
-jest.mock('@/services/MessageService');
+jest.mock('@/services/MessageService', () => ({
+  createMessageService: jest.fn()
+}));
+
 jest.mock('@/lib/logger', () => {
   const mockLogger = {
     info: jest.fn(),
@@ -32,15 +35,15 @@ jest.mock('next/server', () => ({
 }));
 
 describe('Message API Route', () => {
-  let mockGetWelcomeMessage: jest.Mock<Message>;
+  let mockGetWelcomeMessage: jest.Mock<Promise<MessageResponse>>;
   let mockLogger: ReturnType<typeof Logger.getInstance>;
 
   beforeEach(() => {
     // Setup MessageService mocks
     mockGetWelcomeMessage = jest.fn();
-    jest.spyOn(MessageService, 'getInstance').mockReturnValue({
+    (createMessageService as jest.Mock).mockReturnValue({
       getWelcomeMessage: mockGetWelcomeMessage
-    } as MessageService);
+    });
 
     // Get the mocked logger instance
     mockLogger = Logger.getInstance();
@@ -51,8 +54,8 @@ describe('Message API Route', () => {
   });
 
   it('should return welcome message successfully', async () => {
-    const mockMessage = { content: 'Test message' };
-    mockGetWelcomeMessage.mockReturnValue(mockMessage);
+    const mockMessage = { text: 'Test message' };
+    mockGetWelcomeMessage.mockResolvedValue(mockMessage);
 
     const response = await GET();
     const data = await response.json();
@@ -65,9 +68,7 @@ describe('Message API Route', () => {
 
   it('should handle AppError correctly', async () => {
     const error = new AppError('Custom error', 418);
-    mockGetWelcomeMessage.mockImplementation(() => {
-      throw error;
-    });
+    mockGetWelcomeMessage.mockRejectedValue(error);
 
     const response = await GET();
     const data = await response.json();
@@ -79,9 +80,7 @@ describe('Message API Route', () => {
 
   it('should handle unknown errors as ServiceError', async () => {
     const error = new Error('Unknown error');
-    mockGetWelcomeMessage.mockImplementation(() => {
-      throw error;
-    });
+    mockGetWelcomeMessage.mockRejectedValue(error);
 
     const response = await GET();
     const data = await response.json();
@@ -92,9 +91,7 @@ describe('Message API Route', () => {
   });
 
   it('should handle null/undefined errors', async () => {
-    mockGetWelcomeMessage.mockImplementation(() => {
-      throw null;
-    });
+    mockGetWelcomeMessage.mockRejectedValue(null);
 
     const response = await GET();
     const data = await response.json();

@@ -1,4 +1,4 @@
-import { MessageService } from '@/services/MessageService';
+import { createMessageService } from '@/services/MessageService';
 import { NextResponse } from 'next/server';
 import { Logger } from '@/lib/logger';
 import { AppError, ServiceError } from '@/lib/errors';
@@ -9,8 +9,8 @@ export async function GET() {
   try {
     logger.info('Fetching welcome message');
     
-    const messageService = MessageService.getInstance();
-    const message = messageService.getWelcomeMessage();
+    const messageService = createMessageService();
+    const message = await messageService.getWelcomeMessage();
     
     logger.info('Welcome message fetched successfully', { message });
     return NextResponse.json(message);

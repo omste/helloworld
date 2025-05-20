@@ -11,9 +11,9 @@ async function seed() {
       themessage: 'Hello, world!'
     });
 
-    console.log('✅ Database seeded successfully');
+    console.log('Database seeded successfully');
   } catch (error) {
-    console.error('❌ Error seeding database:', error);
+    console.error('Error seeding database:', error);
     process.exit(1);
   }
 }

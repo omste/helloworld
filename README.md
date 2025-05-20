@@ -96,14 +96,16 @@ graph LR
     style DB fill:#efebe9,stroke:#3e2723
     style RD fill:#ffebee,stroke:#b71c1c
 
-    %% Container styles
+
+```
+
+
+    <!-- %% Container styles
     style Next.js Server fill:none,stroke:#666,stroke-dasharray: 5 5
     style tRPC API Layer fill:none,stroke:#666,stroke-dasharray: 5 5
     style Data Layer fill:none,stroke:#666,stroke-dasharray: 5 5
     style External Services fill:none,stroke:#666,stroke-dasharray: 5 5
-    style Google Cloud Run fill:none,stroke:#4285f4,stroke-width:2px
-```
-
+    style Google Cloud Run fill:none,stroke:#4285f4,stroke-width:2px -->
 #### Flow
 The data flows through the following components:
 

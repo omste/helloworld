@@ -100,12 +100,6 @@ graph LR
 ```
 
 
-    <!-- %% Container styles
-    style Next.js Server fill:none,stroke:#666,stroke-dasharray: 5 5
-    style tRPC API Layer fill:none,stroke:#666,stroke-dasharray: 5 5
-    style Data Layer fill:none,stroke:#666,stroke-dasharray: 5 5
-    style External Services fill:none,stroke:#666,stroke-dasharray: 5 5
-    style Google Cloud Run fill:none,stroke:#4285f4,stroke-width:2px -->
 #### Flow
 The data flows through the following components:
 
